@@ -1,0 +1,3 @@
+[submodule "esp32/bleControl/BLESerial"]
+	path = esp32/bleControl/BLESerial
+	url = https://github.com/iot-bus/BLESerial
