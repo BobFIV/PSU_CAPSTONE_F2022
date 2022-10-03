@@ -37,7 +37,6 @@
 #define LOG_MODULE_NAME traffic_light_52840
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-
 #define KEY_PASSKEY_ACCEPT DK_BTN1_MSK
 #define KEY_PASSKEY_REJECT DK_BTN2_MSK
 
@@ -58,7 +57,6 @@ struct uart_data_t {
 static K_FIFO_DEFINE(fifo_uart_tx_data);
 static K_FIFO_DEFINE(fifo_uart_rx_data);
 
-
 /*
 // UART payload buffer element size.
 
@@ -78,6 +76,7 @@ static void ble_data_sent(struct bt_nus_client *nus, uint8_t err,
 	struct uart_data_t *buf;
 
 	// Retrieve buffer context.
+	// Because we allocated this data through console_getline(), we do not need to call k_free anymore
 	//buf = CONTAINER_OF(data, struct uart_data_t, data);
 	//k_free(buf);
 
@@ -92,8 +91,6 @@ static uint8_t ble_data_received(struct bt_nus_client *nus,
 						const uint8_t *data, uint16_t len)
 {
 	ARG_UNUSED(nus);
-
-	int err;
 
 	for (uint16_t pos = 0; pos != len;) {
 		struct uart_data_t *tx = k_malloc(sizeof(*tx));
@@ -133,175 +130,6 @@ static uint8_t ble_data_received(struct bt_nus_client *nus,
 
 	return BT_GATT_ITER_CONTINUE;
 }
-
-/*
-static void uart_cb(const struct device *dev, struct uart_event *evt, void *user_data)
-{
-	ARG_UNUSED(dev);
-
-	static size_t aborted_len;
-	struct uart_data_t *buf;
-	static uint8_t *aborted_buf;
-	static bool disable_req;
-
-	switch (evt->type) {
-	case UART_TX_DONE:
-		LOG_DBG("UART_TX_DONE");
-		if ((evt->data.tx.len == 0) ||
-		    (!evt->data.tx.buf)) {
-			return;
-		}
-
-		if (aborted_buf) {
-			buf = CONTAINER_OF(aborted_buf, struct uart_data_t,
-					   data);
-			aborted_buf = NULL;
-			aborted_len = 0;
-		} else {
-			buf = CONTAINER_OF(evt->data.tx.buf,
-					   struct uart_data_t,
-					   data);
-		}
-
-		k_free(buf);
-
-		buf = k_fifo_get(&fifo_uart_tx_data, K_NO_WAIT);
-		if (!buf) {
-			return;
-		}
-
-		if (uart_tx(uart, buf->data, buf->len, SYS_FOREVER_MS)) {
-			LOG_WRN("Failed to send data over UART");
-		}
-
-		break;
-
-	case UART_RX_RDY:
-		LOG_DBG("UART_RX_RDY");
-		buf = CONTAINER_OF(evt->data.rx.buf, struct uart_data_t, data);
-		buf->len += evt->data.rx.len;
-
-		if (disable_req) {
-			return;
-		}
-
-		if ((evt->data.rx.buf[buf->len - 1] == '\n') ||
-		    (evt->data.rx.buf[buf->len - 1] == '\r')) {
-			disable_req = true;
-			uart_rx_disable(uart);
-		}
-
-		break;
-
-	case UART_RX_DISABLED:
-		LOG_DBG("UART_RX_DISABLED");
-		disable_req = false;
-
-		buf = k_malloc(sizeof(*buf));
-		if (buf) {
-			buf->len = 0;
-		} else {
-			LOG_WRN("Not able to allocate UART receive buffer");
-			k_work_reschedule(&uart_work, UART_WAIT_FOR_BUF_DELAY);
-			return;
-		}
-
-		uart_rx_enable(uart, buf->data, sizeof(buf->data),
-			       UART_RX_TIMEOUT);
-
-		break;
-
-	case UART_RX_BUF_REQUEST:
-		LOG_DBG("UART_RX_BUF_REQUEST");
-		buf = k_malloc(sizeof(*buf));
-		if (buf) {
-			buf->len = 0;
-			uart_rx_buf_rsp(uart, buf->data, sizeof(buf->data));
-		} else {
-			LOG_WRN("Not able to allocate UART receive buffer");
-		}
-
-		break;
-
-	case UART_RX_BUF_RELEASED:
-		LOG_DBG("UART_RX_BUF_RELEASED");
-		buf = CONTAINER_OF(evt->data.rx_buf.buf, struct uart_data_t,
-				   data);
-
-		if (buf->len > 0) {
-			k_fifo_put(&fifo_uart_rx_data, buf);
-		} else {
-			k_free(buf);
-		}
-
-		break;
-
-	case UART_TX_ABORTED:
-		LOG_DBG("UART_TX_ABORTED");
-		if (!aborted_buf) {
-			aborted_buf = (uint8_t *)evt->data.tx.buf;
-		}
-
-		aborted_len += evt->data.tx.len;
-		buf = CONTAINER_OF(aborted_buf, struct uart_data_t,
-				   data);
-
-		uart_tx(uart, &buf->data[aborted_len],
-			buf->len - aborted_len, SYS_FOREVER_MS);
-
-		break;
-
-	default:
-		break;
-	}
-}
-
-static void uart_work_handler(struct k_work *item)
-{
-	struct uart_data_t *buf;
-
-	buf = k_malloc(sizeof(*buf));
-	if (buf) {
-		buf->len = 0;
-	} else {
-		LOG_WRN("Not able to allocate UART receive buffer");
-		k_work_reschedule(&uart_work, UART_WAIT_FOR_BUF_DELAY);
-		return;
-	}
-
-	uart_rx_enable(uart, buf->data, sizeof(buf->data), UART_RX_TIMEOUT);
-}*/
-
-/*
-static int uart_init(void)
-{
-	int err;
-	struct uart_data_t *rx;
-
-	if (!device_is_ready(uart)) {
-		LOG_ERR("UART device not ready");
-		return -ENODEV;
-	}
-
-	rx = k_malloc(sizeof(*rx));
-	if (rx) {
-		rx->len = 0;
-	} else {
-		return -ENOMEM;
-	}
-
-	k_work_init_delayable(&uart_work, uart_work_handler);
-
-	err = uart_callback_set(uart, uart_cb, NULL);
-	if (err) {
-		LOG_ERR("Error setting UART callback!");
-		return err;
-	}
-
-	LOG_ERR("Finishing UART enable...");
-	return uart_rx_enable(uart, rx->data, sizeof(rx->data),
-			      UART_RX_TIMEOUT);
-}*/
 
 static void discovery_complete(struct bt_gatt_dm *dm,
 			       void *context)
@@ -399,12 +227,6 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 		LOG_WRN("MTU exchange failed (err %d)", err);
 	}
 
-	/*LOG_INF("Attempting to set security...");
-	err = bt_conn_set_security(conn, BT_SECURITY_L0);
-	if (err) {
-		LOG_WRN("Failed to set security: %d", err);
-		gatt_discover(conn);
-	}	*/
 	gatt_discover(conn);
 
 	err = bt_scan_stop();
@@ -589,26 +411,24 @@ void main(void)
 		k_sleep(K_MSEC(200));
 	}
 
+	LOG_INF("Beginning BT call back setup...\n");
 
-	printk("Beginning BT call back setup...\n");
-	
 	err = bt_conn_auth_cb_register(&conn_auth_callbacks);
 	if (err) {
 		LOG_ERR("Failed to register authorization callbacks.");
+		k_sleep(K_SECONDS(3));
 		return;
 	}
-	k_sleep(K_SECONDS(2));
 	
-	printk("Did auth cb register, doing auth info cb...");
+	LOG_INF("Did auth cb register, doing auth info cb...");
 	err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
 	if (err) {
-		printk("Failed to register authorization info callbacks.\n");
+		LOG_ERR("Failed to register authorization info callbacks.\n");
+		k_sleep(K_SECONDS(3));
 		return;
 	}
-	
-	printk("BT callbacks registered, attempting BT enable....\n");
 
-	k_sleep(K_SECONDS(5));
+	LOG_INF("BT callbacks registered, attempting BT enable....\n");
 
 	err = bt_enable(NULL);
 	if (err) {
@@ -617,12 +437,10 @@ void main(void)
 		return;
 	}
 	LOG_INF("Bluetooth initialized");
-	
-	k_sleep(K_SECONDS(2));
 
 	if (IS_ENABLED(CONFIG_SETTINGS)) {
 		settings_load();
-		printk("Called settings_load()\n");
+		LOG_INF("Called settings_load()\n");
 	}
 
 	k_sleep(K_SECONDS(2));
@@ -637,7 +455,7 @@ void main(void)
 		}
 	}
 
-	printk("Starting Bluetooth Central UART example\n");
+	LOG_INF("Starting Bluetooth Central UART example\n");
 
 	err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
 	if (err) {
@@ -658,12 +476,13 @@ void main(void)
 			LOG_WRN("Failed to send data over BLE connection"
 				"(err %d)", err);
 		}
-		printk("Sending command: %s\n", s);
+		LOG_INF("Sending command: %s\n", s);
 
+		// We must wait for the string to be sent over BLE, otherwise we risk invalidating the memory
 		err = k_sem_take(&nus_write_sem, NUS_WRITE_TIMEOUT);
 		if (err) {
 			LOG_WRN("NUS send timeout");
 		}
-		printk("Semaphore taken\n");
+		LOG_INF("Semaphore taken\n");
 	}
 }
