@@ -47,12 +47,13 @@ class BLESerialServerCallbacks: public BLEServerCallbacks {
     
     void onConnect(BLEServer* pServer) {
         // do anything needed on connection
+        Serial.println("Device connected!");
         delay(1000); // wait for connection to complete or messages can be lost
     };
 
     void onDisconnect(BLEServer* pServer) {
         pServer->startAdvertising(); // restart advertising
-        Serial.println("Started advertising");
+        Serial.println("Started advertising due to disconnect!");
     }
 };
 
@@ -241,7 +242,7 @@ void loop() {
     char incomingChar = bt.read();
 
     //if it is the end of a word, we can clear it. Else, build the string
-    if(incomingChar != '\n') {
+    if(incomingChar != ';') {
       message += String(incomingChar);
     } else {
       message = "";
@@ -251,31 +252,25 @@ void loop() {
   }
 
   if(message == "red_on") {
-
     digitalWrite(rPin, HIGH);
     digitalWrite(yPin, LOW);
     digitalWrite(gPin, LOW);
-  
   } 
-  else if (message == "green_on") {
-    
+  else if (message == "green_on") {   
     digitalWrite(rPin, LOW);
     digitalWrite(yPin, LOW);
     digitalWrite(gPin, HIGH);
   
   }
   else if (message == "yellow_on") {
-
     digitalWrite(rPin, LOW);
     digitalWrite(yPin, HIGH);
     digitalWrite(gPin, LOW);
     
   } else if (message == "off") {
-    
     digitalWrite(rPin, LOW);
     digitalWrite(yPin, LOW);
     digitalWrite(gPin, LOW);
-    
   }
   delay(20);
 }
