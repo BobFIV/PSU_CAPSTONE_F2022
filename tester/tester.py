@@ -1,3 +1,4 @@
+import sys
 import time
 import serial
 
@@ -13,11 +14,19 @@ if ser.is_open:
 else:
     print("Error opening serial port")
 
+# How long we will sleep in between serial calls
+sleep_time = 1.0
+
+# Allows the user to define this via CLI
+if len(sys.argv) > 1:
+    sleep_time = float(sys.argv[1])
+
+
 # Open our unit testing file
 file = open('unit_tests.txt', 'r')
 lines = file.readlines()
 
-# Need some kind of loop to read from a .txt file
+# Need loop to read from a .txt file
 for line in lines:
 
     # Can provide the command to exit application
@@ -37,7 +46,7 @@ for line in lines:
 
         # Let's wait 1 second before sending 
         # another command
-        time.sleep(1)
+        time.sleep(sleep_time)
 
 # Close the serial and file I/O
 ser.close()
