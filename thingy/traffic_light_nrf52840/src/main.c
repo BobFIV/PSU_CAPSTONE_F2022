@@ -34,6 +34,10 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/console/console.h>
 
+#include <app_event_manager.h>
+#include <config_event.h>
+
+#define MODULE main
 #define LOG_MODULE_NAME traffic_light_52840
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -398,6 +402,10 @@ static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
 void main(void)
 {
 	int err;
+
+    if  (app_event_manager_init()) {
+        LOG_ERR("Application Event Manager is not initialized!");
+    }
 
 	if (usb_enable(NULL)) {
 		LOG_ERR("Failed to initialize USB device!");
