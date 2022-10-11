@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "uart_data_event.h"
+#include "events/uart_data_event.h"
 
 static void log_uart_data_event(const struct app_event_header *aeh)
 {

@@ -7,8 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "module_state_event.h"
-
+#include "events/module_state_event.h"
 
 static const char * const state_name[] = {
 #define X(name) STRINGIFY(name),

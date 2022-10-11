@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "ble_data_event.h"
+#include "events/ble_data_event.h"
 
 static void log_ble_data_event(const struct app_event_header *aeh)
 {

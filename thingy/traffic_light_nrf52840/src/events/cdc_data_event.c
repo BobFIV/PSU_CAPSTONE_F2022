@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "cdc_data_event.h"
+#include "events/cdc_data_event.h"
 
 static void log_cdc_data_event(const struct app_event_header *aeh)
 {
