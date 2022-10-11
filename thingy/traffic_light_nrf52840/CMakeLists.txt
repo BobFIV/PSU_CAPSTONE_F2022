@@ -11,6 +11,7 @@ project(central_traffic_light_control)
 # NORDIC SDK APP START
 target_sources(app PRIVATE
   src/main.c
+#  src/uart_data_event.c
 )
 # NORDIC SDK APP END
 
