@@ -35,7 +35,6 @@
 #include <zephyr/console/console.h>
 
 #include <app_event_manager.h>
-#include <config_event.h>
 
 #define MODULE main
 #define LOG_MODULE_NAME traffic_light_52840
