@@ -1,0 +1,11 @@
+{
+    "C_Cpp.default.configurationProvider": "nrf-connect",
+    "C_Cpp.default.includePath": ["E:\\nRF_SDK_ncs\\v2.1.0\\zephyr\\include", "E:\\nRF_SDK_ncs\\v2.1.0\nrf\\include"],
+    "cmake.configureArgs": ["-DCMAKE_PREFIX_PATH=E:\\nRF_SDK_ncs\\toolchains\\v2.1.0", "-DBOARD=thingy91_nrf52840"],
+    "cmake.configureEnvironment": {"ZEPHYR_BASE":"E:\\nRF_SDK_ncs\\v2.1.0\\zephyr"},
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.generator": "Ninja",
+    "cmake.environment": {
+        "ZEPHYR_BASE": "E:\\nRF_SDK_ncs\\v2.1.0\\zephyr"
+    },
+}

@@ -17,10 +17,25 @@
 #include <zephyr/toolchain/common.h>
 
 #include <app_event_manager.h>
+#include <app_event_manager_profiler_tracer.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Peer type list. */
+#define PEER_ID_LIST	\
+	X(USB)		\
+	X(BLE)
+
+/** Peer ID list. */
+enum peer_id {
+#define X(name) _CONCAT(PEER_ID_, name),
+	PEER_ID_LIST
+#undef X
+
+	PEER_ID_COUNT
+};
 
 enum peer_conn_state {
 	PEER_STATE_CONNECTED,
@@ -30,7 +45,11 @@ enum peer_conn_state {
 /** Peer connection event. */
 struct peer_conn_event {
 	struct app_event_header header;
+
+	enum peer_id peer_id;
+	uint8_t dev_idx;
 	enum peer_conn_state conn_state;
+	uint32_t baudrate;
 };
 
 APP_EVENT_TYPE_DECLARE(peer_conn_event);
