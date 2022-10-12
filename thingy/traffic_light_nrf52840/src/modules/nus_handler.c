@@ -17,15 +17,13 @@
 #include <bluetooth/services/nus.h>
 #include <bluetooth/services/nus_client.h>
 
-#define MODULE ble_handler
+#define MODULE nus_handler
 #include "events/module_state_event.h"
-#include "events/peer_conn_event.h"
-#include "events/ble_ctrl_event.h"
-#include "events/ble_data_event.h"
-#include "events/uart_data_event.h"
+#include "events/nus_ctrl_event.h"
+#include "events/nus_data_event.h"
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(MODULE, CONFIG_BRIDGE_BLE_LOG_LEVEL);
+LOG_MODULE_REGISTER(MODULE, );
 
 #define BLE_RX_BLOCK_SIZE (CONFIG_BT_L2CAP_TX_MTU - 3)
 #define BLE_RX_BUF_COUNT 4
@@ -124,11 +122,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     APP_EVENT_SUBMIT(event);
 }
 
-static struct bt_conn_cb conn_callbacks = {
-    .connected    = connected,
-    .disconnected = disconnected,
-};
-
 static void bt_send_work_handler(struct k_work *work)
 {
     uint16_t len;
@@ -200,11 +193,6 @@ static void bt_sent_cb(struct bt_conn *conn)
     k_work_submit(&bt_send_work);
 }
 
-static struct bt_nus_cb nus_cb = {
-    .received = bt_receive_cb,
-    .sent = bt_sent_cb,
-};
-
 static void adv_start(void)
 {
     int err;
@@ -240,86 +228,46 @@ static void adv_stop(void)
     }
 }
 
-static void name_update(const char *name)
+static void auth_cancel(struct bt_conn *conn)
 {
-    int err;
+    char addr[BT_ADDR_LE_STR_LEN];
 
-    err = bt_set_name(name);
-    if (err) {
-        LOG_WRN("bt_set_name: %d", err);
-        return;
-    }
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-    strcpy(bt_device_name, name);
-    ad[BLE_AD_IDX_NAME].data_len = strlen(name);
-
-    err = bt_le_adv_update_data(ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
-    if (err && err != -EAGAIN) {
-        /* Ignore error return when advertising is not running */
-        LOG_WRN("bt_le_adv_update_data: %d", err);
-        return;
-    }
+    LOG_INF("Pairing cancelled: %s", addr);
 }
 
-static void bt_ready(int err)
+
+static void pairing_complete(struct bt_conn *conn, bool bonded)
 {
-    if (err) {
-        LOG_ERR("%s: %d", __func__, err);
-        return;
-    }
+    char addr[BT_ADDR_LE_STR_LEN];
 
-    err = bt_nus_init(&nus_cb);
-    if (err) {
-        LOG_ERR("bt_nus_init: %d", err);
-        return;
-    }
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-    atomic_set(&ready, true);
-
-#if CONFIG_BRIDGE_BLE_ALWAYS_ON
-    atomic_set(&active, true);
-#endif
-
-    if (atomic_get(&active)) {
-        adv_start();
-    }
+    LOG_INF("Pairing completed: %s, bonded: %d", addr, bonded);
 }
+
+
+static void pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
+{
+    char addr[BT_ADDR_LE_STR_LEN];
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+    LOG_WRN("Pairing failed conn: %s, reason %d", addr, reason);
+}
+
+static struct bt_conn_auth_cb conn_auth_callbacks = {
+    .cancel = auth_cancel,
+};
+
+static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
+    .pairing_complete = pairing_complete,
+    .pairing_failed = pairing_failed
+};
 
 static bool app_event_handler(const struct app_event_header *aeh)
 {
-    if (is_uart_data_event(aeh)) {
-        const struct uart_data_event *event =
-            cast_uart_data_event(aeh);
-
-        /* Only one BLE Service instance, mapped to UART_0 */
-        if (event->dev_idx != 0) {
-            return false;
-        }
-
-        if (current_conn == NULL) {
-            return false;
-        }
-
-        uint32_t written = ring_buf_put(
-            &ble_tx_ring_buf,
-            event->buf,
-            event->len);
-        if (written != event->len) {
-            LOG_WRN("UART_%d -> BLE overflow", event->dev_idx);
-        }
-
-        uint32_t buf_utilization =
-            (ring_buf_capacity_get(&ble_tx_ring_buf) -
-            ring_buf_space_get(&ble_tx_ring_buf));
-
-        /* Simple check to start transmission. */
-        /* If bt_send_work is already running, this has no effect */
-        if (buf_utilization == written) {
-            k_work_submit(&bt_send_work);
-        }
-
-        return false;
-    }
 
     if (is_ble_data_event(aeh)) {
         const struct ble_data_event *event =
@@ -369,13 +317,42 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
             nus_max_send_len = ATT_MIN_PAYLOAD;
 
+            BT_SCAN_CB_INIT(scan_cb, scan_filter_match, NULL,
+                    scan_connecting_error, scan_connecting);
+
             err = bt_enable(bt_ready);
             if (err) {
                 LOG_ERR("bt_enable: %d", err);
                 return false;
             }
 
-            bt_conn_cb_register(&conn_callbacks);
+            //bt_conn_cb_register(&conn_callbacks);
+            LOG_INF("Beginning BT call back setup...\n");
+
+            err = bt_conn_auth_cb_register(&conn_auth_callbacks);
+            if (err) {
+                LOG_ERR("Failed to register authorization callbacks.");
+                k_sleep(K_SECONDS(3));
+                return;
+            }
+
+            LOG_INF("Did auth cb register, doing auth info cb...");
+            err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
+            if (err) {
+                LOG_ERR("Failed to register authorization info callbacks.\n");
+                k_sleep(K_SECONDS(3));
+                return;
+            }
+
+            LOG_INF("BT callbacks registered, attempting BT enable....\n");
+
+            err = bt_enable(NULL);
+            if (err) {
+                LOG_ERR("Bluetooth init failed (err %d)", err);
+                k_sleep(K_SECONDS(2));
+                return;
+            }
+            LOG_INF("Bluetooth initialized");
         }
 
         return false;
@@ -390,5 +367,4 @@ static bool app_event_handler(const struct app_event_header *aeh)
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, ble_ctrl_event);
-APP_EVENT_SUBSCRIBE(MODULE, uart_data_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, ble_data_event);
