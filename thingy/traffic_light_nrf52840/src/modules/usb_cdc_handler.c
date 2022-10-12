@@ -217,13 +217,13 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		const struct module_state_event *event =
 			cast_module_state_event(aeh);
 
-
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
 			int err;
 
 			err = usb_enable(usbd_status);
 			if (err) {
 				LOG_ERR("usb_enable: %d", err);
+                k_sleep(K_SECONDS(2));
 				return false;
 			}
 			for (int i = 0; i < CDC_DEVICE_COUNT; ++i) {

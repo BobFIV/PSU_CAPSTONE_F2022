@@ -41,19 +41,23 @@
 #define LOG_MODULE_NAME main
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-//static const struct device *console_device = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-
 void main() {
 	LOG_INF("main()");
 	k_sleep(K_MSEC(300));
 
-	if (!app_event_manager_init()) {
+	if (app_event_manager_init()) {
 		LOG_ERR("Application Event Manager not initialized!");
 		k_sleep(K_SECONDS(2));
 		return;
 	} 
 
 	LOG_INF("Application Event Manager initialized.");
+	k_sleep(K_SECONDS(4));
 	module_set_state(MODULE_STATE_READY);
 	// TODO: Have a while loop here.
+	LOG_INF("Returned from module_set_state_ready");
+	while(true) {
+		k_sleep(K_SECONDS(2));
+		LOG_INF("Boop");
+	}
 }
