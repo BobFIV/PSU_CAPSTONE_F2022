@@ -15,6 +15,7 @@ target_sources(app PRIVATE
   src/events/cdc_data_event.c
   src/events/ble_data_event.c
   src/events/ble_ctrl_event.c
+  src/events/peer_conn_event.c
 )
 
 target_include_directories(app PRIVATE
