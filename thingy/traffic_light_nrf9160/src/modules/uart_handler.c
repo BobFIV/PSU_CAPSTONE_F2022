@@ -12,16 +12,14 @@
 #define MODULE uart_handler
 #include "events/module_state_event.h"
 #include "events/peer_conn_event.h"
-#include "events/ble_data_event.h"
-#include "events/cdc_data_event.h"
 #include "events/uart_data_event.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
 static const struct device *devices[] = {
-	DEVICE_DT_GET(DT_NODELABEL(uart0)),
-	DEVICE_DT_GET(DT_NODELABEL(uart1)),
+	// NOTE: UART1 is handled by the Zephyr UART logger
+	DEVICE_DT_GET(DT_NODELABEL(uart0))
 };
 
 #define UART_DEVICE_COUNT ARRAY_SIZE(devices)
@@ -353,50 +351,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		return true;
 	}
 
-	if (is_cdc_data_event(aeh)) {
-		const struct cdc_data_event *event =
-			cast_cdc_data_event(aeh);
-
-		if (event->dev_idx >= UART_DEVICE_COUNT) {
-			return false;
-		}
-
-		if (!devices[event->dev_idx]) {
-			return false;
-		}
-
-		err = uart_tx_enqueue(event->buf, event->len, event->dev_idx);
-		if (err == -ENOMEM) {
-			LOG_WRN("CDC_%d->UART_%d overflow",
-				event->dev_idx,
-				event->dev_idx);
-		} else if (err) {
-			LOG_ERR("uart_tx_enqueue: %d", err);
-		}
-
-		return false;
-	}
-
-	if (is_ble_data_event(aeh)) {
-		const struct ble_data_event *event =
-			cast_ble_data_event(aeh);
-		/* Only one BLE Service instance: always map to UART_0 */
-		uint8_t dev_idx = 0;
-
-		if (!devices[dev_idx]) {
-			return false;
-		}
-
-		err = uart_tx_enqueue(event->buf, event->len, dev_idx);
-		if (err == -ENOMEM) {
-			LOG_WRN("BLE->UART_%d overflow", dev_idx);
-		} else if (err) {
-			LOG_ERR("uart_tx_enqueue: %d", err);
-		}
-
-		return false;
-	}
-
 	if (is_peer_conn_event(aeh)) {
 		const struct peer_conn_event *event =
 			cast_peer_conn_event(aeh);
@@ -487,6 +441,4 @@ static bool app_event_handler(const struct app_event_header *aeh)
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, peer_conn_event);
-APP_EVENT_SUBSCRIBE(MODULE, ble_data_event);
-APP_EVENT_SUBSCRIBE(MODULE, cdc_data_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, uart_data_event);

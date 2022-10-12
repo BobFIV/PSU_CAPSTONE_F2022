@@ -43,6 +43,6 @@ void main() {
 	LOG_INF("Returned from module_set_state_ready");
 	while(true) {
 		k_sleep(K_SECONDS(2));
-		LOG_INF("Boop");
+		LOG_INF("Boop from 9160!");
 	}
 }
