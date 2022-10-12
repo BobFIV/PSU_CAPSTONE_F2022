@@ -12,9 +12,7 @@ target_sources(app PRIVATE
   src/main.c
   src/events/uart_data_event.c
   src/events/module_state_event.c
-  src/events/cdc_data_event.c
   src/events/peer_conn_event.c
-  src/modules/usb_cdc_handler.c
   src/modules/uart_handler.c
 )
 
