@@ -19,7 +19,7 @@ LOG_MODULE_REGISTER(MODULE);
 
 static const struct device *devices[] = {
     // NOTE: cdc_acm_uart0 is handled by Zephyr's console/logging backend, not by us
-	DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart1))
+	DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart0))
 };
 
 #define CDC_DEVICE_COUNT ARRAY_SIZE(devices)
@@ -181,9 +181,10 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		int tx_written;
 
         // We only care about UART events on the UART0 line, the UART1 line is not a passthrough
-		if (event->dev_idx != 0) {
+		if (event->dev_idx >= CDC_DEVICE_COUNT) {
 			return false;
 		}
+		LOG_INF("Event from %d", event->dev_idx);
 
 		if (cdc_ready[event->dev_idx] == 0) {
 			return false;

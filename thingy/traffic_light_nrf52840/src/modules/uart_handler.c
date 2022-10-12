@@ -357,7 +357,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		const struct cdc_data_event *event =
 			cast_cdc_data_event(aeh);
 
-		if (event->dev_idx >= UART_DEVICE_COUNT) {
+		if (event->dev_idx == 1) {
+			// Because we are using the Zephyr console on the CDC UART1 device, we should never be getting any CDC data events on dev_idx 1
+			LOG_WRN("Got a cdc data event with dev_idx of 1! This should never happen?");
 			return false;
 		}
 
@@ -460,6 +462,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 					return false;
 				}
 				uart_default_baudrate[i] = cfg.baudrate;
+				LOG_INF("Set uart %d baud to %d",i,uart_default_baudrate[i]);
 				subscriber_count[i] = 0;
 				enable_rx_retry[i] = false;
 

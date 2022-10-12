@@ -6,7 +6,7 @@
 
  / {
 	chosen {
-			zephyr,console = &cdc_acm_uart0;
+			zephyr,console = &cdc_acm_uart1;
 	};
 };
 

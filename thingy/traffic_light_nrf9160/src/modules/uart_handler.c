@@ -18,8 +18,8 @@
 LOG_MODULE_REGISTER(MODULE);
 
 static const struct device *devices[] = {
-	// NOTE: UART1 is handled by the Zephyr UART logger
-	DEVICE_DT_GET(DT_NODELABEL(uart0))
+	// NOTE: UART0 is handled by the Zephyr UART logger
+	DEVICE_DT_GET(DT_NODELABEL(uart1))
 };
 
 #define UART_DEVICE_COUNT ARRAY_SIZE(devices)
