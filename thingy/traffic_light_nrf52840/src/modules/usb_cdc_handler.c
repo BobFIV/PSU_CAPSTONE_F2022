@@ -18,8 +18,8 @@
 LOG_MODULE_REGISTER(MODULE);
 
 static const struct device *devices[] = {
-	DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart0)),
-	DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart1)),
+    // NOTE: cdc_acm_uart0 is handled by Zephyr's console/logging backend, not by us
+	DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart1))
 };
 
 #define CDC_DEVICE_COUNT ARRAY_SIZE(devices)
@@ -180,7 +180,8 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_uart_data_event(aeh);
 		int tx_written;
 
-		if (event->dev_idx >= CDC_DEVICE_COUNT) {
+        // We only care about UART events on the UART0 line, the UART1 line is not a passthrough
+		if (event->dev_idx != 0) {
 			return false;
 		}
 
@@ -216,13 +217,8 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		const struct module_state_event *event =
 			cast_module_state_event(aeh);
 
-#if CONFIG_BRIDGE_MSC_ENABLE
-		if (check_state(event, MODULE_ID(fs_handler), MODULE_STATE_STANDBY)) {
-			/* Enable USBD once file system is populated */
-#else
+
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
-			/* Enable USBD right away */
-#endif
 			int err;
 
 			err = usb_enable(usbd_status);
