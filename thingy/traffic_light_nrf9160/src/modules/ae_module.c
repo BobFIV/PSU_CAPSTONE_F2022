@@ -115,7 +115,6 @@ void light_state_thread() {
 
 static bool app_event_handler(const struct app_event_header *aeh)
 {
-	int err;
 
 	if (is_uart_data_event(aeh)) {
 		const struct uart_data_event *event =

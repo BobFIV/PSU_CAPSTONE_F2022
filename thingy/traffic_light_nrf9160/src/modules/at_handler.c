@@ -31,7 +31,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_uart_data_event(aeh);
 		if (event->dev_idx == 0) {
             // This is coming from the PC/upper tester
-            LOG_INF("UART0 data event: %c", event->buf);
+            //LOG_INF("UART0 data event: %c", event->buf);
 			// TODO: Parse AT commands.
         }
 

@@ -6,8 +6,6 @@
 
 #include <zephyr/types.h>
 #include <zephyr/sys/ring_buffer.h>
-#include <zephyr/drivers/uart.h>
-#include <zephyr/pm/device.h>
 
 #define MODULE http_module
 #include "events/module_state_event.h"
@@ -25,7 +23,6 @@ void web_poll() {
 
 static bool app_event_handler(const struct app_event_header *aeh)
 {
-	int err;
 
 	if (is_module_state_event(aeh)) {
 		const struct module_state_event *event =
