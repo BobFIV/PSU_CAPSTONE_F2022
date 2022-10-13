@@ -16,6 +16,8 @@ target_sources(app PRIVATE
   src/modules/uart_handler.c
   src/modules/at_handler.c
   src/modules/ae_module.c
+  src/modules/lte_module.c
+  src/modules/http_module.c
 )
 
 target_include_directories(app PRIVATE
