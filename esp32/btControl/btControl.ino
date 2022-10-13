@@ -29,7 +29,7 @@ void setup() {
 
   digitalWrite(rPin, LOW);
   digitalWrite(yPin, LOW);
-  digitalWrite(gPin, LOW);
+  digitalWrite(gPin, HIGH);
   
   //Bluetooth device name
   bt.begin("LightPost1");

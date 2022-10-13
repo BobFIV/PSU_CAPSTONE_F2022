@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "uart_data_event.h"
+#include "events/uart_data_event.h"
 
 static void log_uart_data_event(const struct app_event_header *aeh)
 {
@@ -24,5 +24,5 @@ APP_EVENT_TYPE_DEFINE(uart_data_event,
 		  log_uart_data_event,
 		  NULL,
 		  APP_EVENT_FLAGS_CREATE(
-			IF_ENABLED(CONFIG_BRIDGE_LOG_UART_DATA_EVENT,
+			IF_ENABLED(CONFIG_LOG_UART_DATA_EVENT,
 				(APP_EVENT_TYPE_FLAGS_INIT_LOG_ENABLE))));

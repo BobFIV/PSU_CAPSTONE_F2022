@@ -1,0 +1,64 @@
+menu "Connectivity Bridge"
+config BRIDGE_BUF_SIZE
+	int "Transport interface buffer size"
+	default 4096
+	help
+	  Size of transmit/receive buffer for transfer between interfaces.
+
+config BRIDGE_UART_BUF_COUNT
+	int "UART buffer block count"
+	default 3
+	range 3 255
+	help
+	  Number of buffer blocks assigned for UART instances.
+	  This value is scaled with the number of interfaces.
+	  With the default instance count of 2, and for example 3 buffers,
+	  the total will be 6 buffers.
+	  Note that all buffers are shared between UART instances.
+endmenu
+
+menu "Event Logging Options"
+
+config LOG_MODULE_STATE_EVENT
+	bool "Enable debug logging of module state events"
+	default false
+	help
+	  Enables logging of module state events as they are produced.
+
+config LOG_AE_CMD_EVENT
+	bool "Enable debug logging of AE command events"
+	default false
+	help
+	  Enables logging of AE command events as they are produced.
+
+config LOG_BLE_DATA_EVENT
+	bool "Enable debug logging of BLE data events"
+	default false
+	help
+	  Enables logging of BLE data events as they are produced.
+
+config LOG_BLE_CTRL_EVENT
+	bool "Enable debug logging of BLE control events"
+	default false
+	help
+	  Enables logging of BLE control events as they are produced.
+
+config LOG_UART_DATA_EVENT
+	bool "Enable debug logging of uart data events"
+	default false
+	help
+	  Enables logging of UART data events as they are produced.
+
+config LOG_PEER_CONN_EVENT
+	bool "Enable debug logging of peer connection events"
+	default false
+	help
+	  Enables logging of peer connection events.
+	  
+endmenu
+
+
+menu "Zephyr Kernel"
+source "Kconfig.zephyr"
+endmenu
+
