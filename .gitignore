@@ -1,3 +1,6 @@
 build/
 thingy/traffic_light_nrf52840/windows-cmake.sh
 *.swp
+thingy/traffic_light_workspace.code-workspace
+thingy/traffic_light_nrf9160/windows-cmake.sh
+thingy/traffic_light_nrf9160/.vscode/settings.json
