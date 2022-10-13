@@ -183,7 +183,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		if (event->dev_idx >= CDC_DEVICE_COUNT) {
 			return false;
 		}
-		LOG_INF("Event from %d", event->dev_idx);
 
 		if (cdc_ready[event->dev_idx] == 0) {
 			return false;
