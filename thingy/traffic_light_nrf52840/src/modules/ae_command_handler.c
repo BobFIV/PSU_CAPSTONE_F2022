@@ -96,52 +96,63 @@ static bool app_event_handler(const struct app_event_header *aeh)
                     enum light_states state;
 
                     if (strncmp(&cmd_parse_buf[0], "green1", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE1;
+                        cmd = AE_CMD_SET_STATE1;
                         state = LIGHT_GREEN;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "yellow1", CMD_PARSE_BUFFER_SIZE) == 0) {
+                        cmd = AE_CMD_SET_STATE1;
                         state = LIGHT_YELLOW;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "red1", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE1;
+                        cmd = AE_CMD_SET_STATE1;
                         state = LIGHT_RED;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "off1", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE1;
+                        cmd = AE_CMD_SET_STATE1;
                         state = LIGHT_OFF;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "cycle1", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE1;
+                        cmd = AE_CMD_SET_STATE1;
                         state = LIGHT_CYCLE;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "green2", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE2;
+                        cmd = AE_CMD_SET_STATE2;
                         state = LIGHT_GREEN;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "yellow2", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE2;
+                        cmd = AE_CMD_SET_STATE2;
                         state = LIGHT_YELLOW;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "red2", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE2;
+                        cmd = AE_CMD_SET_STATE2;
                         state = LIGHT_RED;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "off2", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE2;
+                        cmd = AE_CMD_SET_STATE2;
                         state = LIGHT_OFF;
                         valid_cmd = true;
                     }
                     else if (strncmp(&cmd_parse_buf[0], "cycle2", CMD_PARSE_BUFFER_SIZE) == 0) {
-                        cmd = SET_STATE2;
+                        cmd = AE_CMD_SET_STATE2;
                         state = LIGHT_CYCLE;
+                        valid_cmd = true;
+                    }
+                    else if (strncmp(&cmd_parse_buf[0], "start_scan", CMD_PARSE_BUFFER_SIZE) == 0) {
+                        cmd = AE_CMD_START_SCAN;
+                        state = 0;
+                        valid_cmd = true;
+                    }
+                    else if (strncmp(&cmd_parse_buf[0], "stop_scan", CMD_PARSE_BUFFER_SIZE) == 0) {
+                        cmd = AE_CMD_STOP_SCAN;
+                        state = 0;
                         valid_cmd = true;
                     }
 

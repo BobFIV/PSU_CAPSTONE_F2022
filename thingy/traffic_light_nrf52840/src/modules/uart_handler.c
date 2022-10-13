@@ -12,7 +12,7 @@
 #define MODULE uart_handler
 #include "events/module_state_event.h"
 #include "events/peer_conn_event.h"
-#include "events/ble_data_event.h"
+#include "events/ble_ctrl_event.h"
 #include "events/cdc_data_event.h"
 #include "events/uart_data_event.h"
 
@@ -379,19 +379,28 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		return false;
 	}
 
-	if (is_ble_data_event(aeh)) {
-		const struct ble_data_event *event =
-			cast_ble_data_event(aeh);
-		/* Only one BLE Service instance: always map to UART_0 */
-		uint8_t dev_idx = 0;
-
-		if (!devices[dev_idx]) {
+	if (is_ble_ctrl_event(aeh)) {
+		const struct ble_ctrl_event *event =
+			cast_ble_ctrl_event(aeh);
+		if (event->cmd == BLE_CTRL_CONNECTED) {
+			// "!C;" - connected message to nRF9160
+			// 3 - length of the string "!C;"
+			// 1 - device index (corresponds to UART1)
+			err = uart_tx_enqueue("!C;", 3, 1);
+		}
+		else if (event->cmd == BLE_CTRL_DISCONNECTED) {
+			// "!D;" - disconnected message to nRF9160
+			// 3 - length of the string "!D;"
+			// 1 - device index (corresponds to UART1)
+			err = uart_tx_enqueue("!D;", 3, 1);
+		}
+		else {
+			LOG_ERR("Unhandled BLE CTRL event! cmd: %d", event->cmd);
 			return false;
 		}
-
-		err = uart_tx_enqueue(event->buf, event->len, dev_idx);
+		
 		if (err == -ENOMEM) {
-			LOG_WRN("BLE->UART_%d overflow", dev_idx);
+			LOG_WRN("BLE->UART_1 overflow");
 		} else if (err) {
 			LOG_ERR("uart_tx_enqueue: %d", err);
 		}
@@ -498,6 +507,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, peer_conn_event);
-APP_EVENT_SUBSCRIBE(MODULE, ble_data_event);
+APP_EVENT_SUBSCRIBE(MODULE, ble_ctrl_event);
 APP_EVENT_SUBSCRIBE(MODULE, cdc_data_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, uart_data_event);

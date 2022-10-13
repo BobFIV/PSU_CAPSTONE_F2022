@@ -132,6 +132,8 @@ static void uart_callback(const struct device *dev, struct uart_event *evt,
 	case UART_RX_RDY:
 		uart_rx_buf_ref(evt->data.rx.buf);
 
+		LOG_INF("Got UART data: %s", evt->data.rx.buf);
+
 		event = new_uart_data_event();
 		event->dev_idx = dev_idx;
 		event->buf = &evt->data.rx.buf[evt->data.rx.offset];

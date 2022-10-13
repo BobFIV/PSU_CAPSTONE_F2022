@@ -48,6 +48,8 @@ void main() {
 	module_set_state(MODULE_STATE_READY);
 	// TODO: Have a while loop here.
 	LOG_INF("Returned from module_set_state_ready");
+	k_sleep(K_SECONDS(5));
+	send_command("!start_scan;");
 	while(true) {
 		k_sleep(K_SECONDS(1));
 		LOG_INF("Boop from 9160!");

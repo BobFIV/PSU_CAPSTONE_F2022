@@ -25,9 +25,7 @@ extern "C" {
 
 enum ble_ctrl_cmd {
     BLE_CTRL_CONNECTED,
-    BLE_CTRL_DISCONNECTED,
-    BLE_CTRL_SCAN_STARTED,
-    BLE_CTRL_SCAN_STOPPED
+    BLE_CTRL_DISCONNECTED
 };
 
 /** BLE control event. */

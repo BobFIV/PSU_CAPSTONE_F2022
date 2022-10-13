@@ -19,6 +19,7 @@ target_sources(app PRIVATE
   src/events/ae_command_event.c
   src/modules/usb_cdc_handler.c
   src/modules/ae_command_handler.c
+  src/modules/nus_handler.c
   src/modules/uart_handler.c
 )
 

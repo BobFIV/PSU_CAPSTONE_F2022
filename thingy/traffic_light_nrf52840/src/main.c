@@ -53,8 +53,10 @@ void main() {
 	module_set_state(MODULE_STATE_READY);
 	// TODO: Have a while loop here.
 	LOG_INF("Returned from module_set_state_ready");
-	while(true) {
+	k_sleep(K_SECONDS(2));
+	LOG_INF("Boop from 52840!");
+	/*while(true) {
 		k_sleep(K_SECONDS(2));
 		LOG_INF("Boop from 52840!");
-	}
+	}*/
 }

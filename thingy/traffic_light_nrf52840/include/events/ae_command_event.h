@@ -24,7 +24,8 @@ extern "C" {
 #endif
 
 enum ae_commands {
-	SET_STATE1, SET_STATE2
+	AE_CMD_SET_STATE1, AE_CMD_SET_STATE2, 
+	AE_CMD_START_SCAN, AE_CMD_STOP_SCAN
 };
 
 enum light_states {
