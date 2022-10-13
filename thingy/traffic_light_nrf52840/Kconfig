@@ -17,6 +17,47 @@ config BRIDGE_UART_BUF_COUNT
 	  Note that all buffers are shared between UART instances.
 endmenu
 
+menu "Event Logging Options"
+
+config LOG_MODULE_STATE_EVENT
+	bool "Enable debug logging of module state events"
+	default false
+	help
+	  Enables logging of module state events as they are produced.
+
+config LOG_AE_CMD_EVENT
+	bool "Enable debug logging of AE command events"
+	default false
+	help
+	  Enables logging of AE command events as they are produced.
+
+config LOG_BLE_DATA_EVENT
+	bool "Enable debug logging of BLE data events"
+	default false
+	help
+	  Enables logging of BLE data events as they are produced.
+
+config LOG_BLE_CTRL_EVENT
+	bool "Enable debug logging of BLE control events"
+	default false
+	help
+	  Enables logging of BLE control events as they are produced.
+
+config LOG_UART_DATA_EVENT
+	bool "Enable debug logging of uart data events"
+	default false
+	help
+	  Enables logging of UART data events as they are produced.
+
+config LOG_PEER_CONN_EVENT
+	bool "Enable debug logging of peer connection events"
+	default false
+	help
+	  Enables logging of peer connection events.
+	  
+endmenu
+
+
 menu "Zephyr Kernel"
 source "Kconfig.zephyr"
 endmenu

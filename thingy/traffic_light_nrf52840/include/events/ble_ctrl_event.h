@@ -24,8 +24,6 @@ extern "C" {
 #endif
 
 enum ble_ctrl_cmd {
-	BLE_CTRL_START_SCAN,
-	BLE_CTRL_STOP_SCAN,
     BLE_CTRL_CONNECTED,
     BLE_CTRL_DISCONNECTED,
     BLE_CTRL_SCAN_STARTED,

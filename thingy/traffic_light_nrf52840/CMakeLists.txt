@@ -16,7 +16,9 @@ target_sources(app PRIVATE
   src/events/ble_data_event.c
   src/events/ble_ctrl_event.c
   src/events/peer_conn_event.c
+  src/events/ae_command_event.c
   src/modules/usb_cdc_handler.c
+  src/modules/ae_command_handler.c
   src/modules/uart_handler.c
 )
 

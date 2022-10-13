@@ -477,6 +477,14 @@ static bool app_event_handler(const struct app_event_header *aeh)
 					set_uart_power_state(i, false);
 				}
 			}
+
+			// At startup, enabled the UART1 connection with the Thingy:91
+			struct peer_conn_event *event = new_peer_conn_event();
+
+			event->dev_idx = 1;
+			event->baudrate = 0;
+			event->conn_state = PEER_STATE_CONNECTED;
+			APP_EVENT_SUBMIT(event);
 		}
 
 		return false;

@@ -11,7 +11,6 @@
 
 #define MODULE uart_handler
 #include "events/module_state_event.h"
-#include "events/peer_conn_event.h"
 #include "events/uart_data_event.h"
 
 #include <zephyr/logging/log.h>
@@ -194,35 +193,6 @@ static void uart_callback(const struct device *dev, struct uart_event *evt,
 	}
 }
 
-static void set_uart_baudrate(uint8_t dev_idx, uint32_t baudrate)
-{
-	const struct device *dev = devices[dev_idx];
-	struct uart_config cfg;
-	int err;
-
-	if (baudrate == 0) {
-		return;
-	}
-
-	err = uart_config_get(dev, &cfg);
-	if (err) {
-		LOG_ERR("uart_config_get: %d", err);
-		return;
-	}
-
-	if (cfg.baudrate == baudrate) {
-		return;
-	}
-
-	cfg.baudrate = baudrate;
-
-	err = uart_configure(dev, &cfg);
-	if (err) {
-		LOG_ERR("uart_configure: %d", err);
-		return;
-	}
-}
-
 static void set_uart_power_state(uint8_t dev_idx, bool active)
 {
 #if UART_SET_PM_STATE
@@ -308,7 +278,7 @@ static void uart_tx_finish(uint8_t dev_idx, size_t len)
 	}
 }
 
-static int uart_tx_enqueue(uint8_t *data, size_t data_len, uint8_t dev_idx)
+int uart_tx_enqueue(uint8_t *data, size_t data_len, uint8_t dev_idx)
 {
 	atomic_t started;
 	uint32_t written;
@@ -351,49 +321,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		return true;
 	}
 
-	if (is_peer_conn_event(aeh)) {
-		const struct peer_conn_event *event =
-			cast_peer_conn_event(aeh);
-		int prev_count;
-
-		if (event->dev_idx >= UART_DEVICE_COUNT) {
-			return false;
-		}
-
-		if (!devices[event->dev_idx]) {
-			return false;
-		}
-
-		prev_count = subscriber_count[event->dev_idx];
-
-		if (event->conn_state == PEER_STATE_CONNECTED) {
-			subscriber_count[event->dev_idx] += 1;
-			set_uart_baudrate(event->dev_idx, event->baudrate);
-		} else {
-			subscriber_count[event->dev_idx] -= 1;
-		}
-
-		__ASSERT_NO_MSG(subscriber_count[event->dev_idx] >= 0);
-
-		if (subscriber_count[event->dev_idx] == 0) {
-			LOG_DBG("No subscribers. Close UART_%d RX", event->dev_idx);
-			set_uart_baudrate(
-				event->dev_idx,
-				uart_default_baudrate[event->dev_idx]);
-			disable_uart_rx(event->dev_idx);
-		} else if (prev_count == 0) {
-			LOG_DBG("First subscriber. Open UART_%d RX", event->dev_idx);
-			if (UART_SET_PM_STATE) {
-				set_uart_power_state(event->dev_idx, true);
-			}
-			enable_uart_rx(event->dev_idx);
-		} else {
-			return false;
-		}
-
-		return false;
-	}
-
 	if (is_module_state_event(aeh)) {
 		const struct module_state_event *event =
 			cast_module_state_event(aeh);
@@ -427,6 +354,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				if (UART_SET_PM_STATE) {
 					set_uart_power_state(i, false);
 				}
+
+				// We aren't using peer connection events to trigger this, this should always be up.
+				enable_uart_rx(0);
 			}
 		}
 
@@ -440,5 +370,4 @@ static bool app_event_handler(const struct app_event_header *aeh)
 }
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
-APP_EVENT_SUBSCRIBE(MODULE, peer_conn_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, uart_data_event);

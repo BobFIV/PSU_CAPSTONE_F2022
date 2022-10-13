@@ -18,7 +18,7 @@
 LOG_MODULE_REGISTER(MODULE);
 
 static const struct device *devices[] = {
-    // NOTE: cdc_acm_uart0 is handled by Zephyr's console/logging backend, not by us
+    // NOTE: cdc_acm_uart1 is handled by Zephyr's console/logging backend, not by us
 	DEVICE_DT_GET(DT_NODELABEL(cdc_acm_uart0))
 };
 
@@ -73,7 +73,6 @@ static void poll_dtr(void)
 
 			struct peer_conn_event *event = new_peer_conn_event();
 
-			event->peer_id = PEER_ID_USB;
 			event->dev_idx = i;
 			event->baudrate = baudrate;
 			event->conn_state =
