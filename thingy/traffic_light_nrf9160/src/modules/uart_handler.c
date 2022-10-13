@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(MODULE);
 
 static const struct device *devices[] = {
 	// NOTE: UART0 is handled by the Zephyr UART logger
+	DEVICE_DT_GET(DT_NODELABEL(uart0)),
 	DEVICE_DT_GET(DT_NODELABEL(uart1))
 };
 
@@ -35,6 +36,8 @@ static const struct device *devices[] = {
 #else
 #define UART_SET_PM_STATE false
 #endif
+
+K_SEM_DEFINE(uart1_tx_sem, 1, 1);
 
 struct uart_rx_buf {
 	atomic_t ref_counter;
@@ -132,8 +135,6 @@ static void uart_callback(const struct device *dev, struct uart_event *evt,
 	case UART_RX_RDY:
 		uart_rx_buf_ref(evt->data.rx.buf);
 
-		LOG_INF("Got UART data: %s", evt->data.rx.buf);
-
 		event = new_uart_data_event();
 		event->dev_idx = dev_idx;
 		event->buf = &evt->data.rx.buf[evt->data.rx.offset];
@@ -171,6 +172,9 @@ static void uart_callback(const struct device *dev, struct uart_event *evt,
 
 		if (ring_buf_is_empty(&uart_tx_ringbufs[dev_idx].rb)) {
 			atomic_set(&uart_tx_started[dev_idx], false);
+			if (dev_idx == 1) {
+				k_sem_give(&uart1_tx_sem);
+			}
 		} else {
 			uart_tx_start(dev_idx);
 		}
@@ -286,6 +290,10 @@ int uart_tx_enqueue(uint8_t *data, size_t data_len, uint8_t dev_idx)
 	uint32_t written;
 	int err;
 
+	if(dev_idx == 1) {
+		k_sem_take(&uart1_tx_sem, K_FOREVER);
+	}
+
 	written = ring_buf_put(&uart_tx_ringbufs[dev_idx].rb, data, data_len);
 	if (written == 0) {
 		return -ENOMEM;
@@ -359,6 +367,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 				// We aren't using peer connection events to trigger this, this should always be up.
 				enable_uart_rx(0);
+				enable_uart_rx(1);
 			}
 		}
 

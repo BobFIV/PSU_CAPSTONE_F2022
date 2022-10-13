@@ -40,22 +40,19 @@ LOG_MODULE_REGISTER(MODULE);
 
 #define NUS_WRITE_TIMEOUT K_MSEC(150)
 
-K_SEM_DEFINE(nus_write_sem, 0, 1);
+K_SEM_DEFINE(nus_write_sem,1,1);
 
 static struct bt_conn *default_conn;
 static struct bt_nus_client nus_client;
+bool ble_connected = false;
 
 static void ble_data_sent(struct bt_nus_client *nus, uint8_t err,
 					const uint8_t *const data, uint16_t len)
 {
 	ARG_UNUSED(nus);
+	ARG_UNUSED(data);
+	ARG_UNUSED(len);
 	LOG_INF("ble data sent()");
-	struct uart_data_t *buf;
-
-	// Retrieve buffer context.
-	// Because we allocated this data through console_getline(), we do not need to call k_free anymore
-	//buf = CONTAINER_OF(data, struct uart_data_t, data);
-	//k_free(buf);
 
 	k_sem_give(&nus_write_sem);
 
@@ -182,12 +179,12 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
     event = new_ble_ctrl_event();
     event->cmd = BLE_CTRL_CONNECTED;
     APP_EVENT_SUBMIT(event);
+	ble_connected = true;
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
-	int err;
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
@@ -206,6 +203,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
     event = new_ble_ctrl_event();
     event->cmd = BLE_CTRL_DISCONNECTED;
     APP_EVENT_SUBMIT(event);
+	ble_connected = false;
 }
 
 static void security_changed(struct bt_conn *conn, bt_security_t level,
@@ -387,6 +385,22 @@ static void nus_module_startup() {
     }
 }
 
+void send_ble_command(char* s) {
+	// We must wait for the string to be sent over BLE, otherwise we risk invalidating the memory
+	int err = k_sem_take(&nus_write_sem, NUS_WRITE_TIMEOUT);
+	if (err) {
+		LOG_WRN("NUS send timeout");
+	}
+
+	err = bt_nus_client_send(&nus_client, s, strlen(s));
+	if (err) {
+		LOG_WRN("Failed to send data over BLE connection (err %d)", err);
+	}
+	else {
+		LOG_INF("Sent command: %s", s);
+	}
+}
+
 static bool app_event_handler(const struct app_event_header *aeh)
 {
 	int err;
@@ -396,10 +410,19 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_ae_command_event(aeh);
         switch (event->cmd) {
             case AE_CMD_START_SCAN:
-                err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
-                if (err) {
-                    LOG_ERR("Scanning failed to start (err %d)", err);
-                }
+				if (ble_connected) {
+					 // Fire off a CONNECTED event
+					struct ble_ctrl_event *event;
+					event = new_ble_ctrl_event();
+					event->cmd = BLE_CTRL_CONNECTED;
+					APP_EVENT_SUBMIT(event);
+				}
+				else {
+					err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
+					if (err) {
+						LOG_ERR("Scanning failed to start (err %d)", err);
+					}
+				}
             break;
             case AE_CMD_STOP_SCAN:
                 err = bt_scan_stop();
@@ -408,12 +431,44 @@ static bool app_event_handler(const struct app_event_header *aeh)
                 }
             break;
             case AE_CMD_SET_STATE1:
-                LOG_INF("AE CMD SET STATE 1");
-                
+                //LOG_INF("AE CMD SET STATE 1");
+                switch(event->light_state) {
+					case LIGHT_OFF:
+					send_ble_command("off1;");
+					break;
+					case LIGHT_RED:
+					send_ble_command("red1;");
+					break;
+					case LIGHT_YELLOW:
+					send_ble_command("yellow1;");
+					break;
+					case LIGHT_GREEN:
+					send_ble_command("green1;");
+					break;
+					default:
+					LOG_ERR("Unabled light state %d", event->light_state);
+					break;
+				}
             break;
             case AE_CMD_SET_STATE2:
-                LOG_INF("AE CMD SET STATE2");
-                
+                //LOG_INF("AE CMD SET STATE2");
+                switch(event->light_state) {
+					case LIGHT_OFF:
+					send_ble_command("off2;");
+					break;
+					case LIGHT_RED:
+					send_ble_command("red2;");
+					break;
+					case LIGHT_YELLOW:
+					send_ble_command("yellow2;");
+					break;
+					case LIGHT_GREEN:
+					send_ble_command("green2;");
+					break;
+					default:
+					LOG_ERR("Unabled light state %d", event->light_state);
+					break;
+				}
             break;
             default:
                 LOG_WRN("AE CMD type not handled! %d", event->cmd);
@@ -441,8 +496,8 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
     if (is_ble_data_event(aeh)) {
         // return true so that the App Event Handler knows to deallocated the event memory
-        const struct ble_data_event *event =
-			cast_ble_data_event(aeh);
+        //const struct ble_data_event *event =
+		//	cast_ble_data_event(aeh);
 
 		/* All subscribers have gotten a chance to copy data at this point */
 		//k_mem_slab_free(&ble_rx_slab, (void **) &event->buf);

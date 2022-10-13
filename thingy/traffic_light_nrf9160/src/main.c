@@ -29,13 +29,6 @@
 #define LOG_MODULE_NAME main
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-extern int uart_tx_enqueue(uint8_t *data, size_t data_len, uint8_t dev_idx);
-
-void send_command(char* cmd) {
-	LOG_INF("sending: %s", cmd);
-	uart_tx_enqueue((uint8_t*) cmd, strnlen(cmd, 30), 0);
-}
-
 void main() {
 
 	if (app_event_manager_init()) {
@@ -46,18 +39,10 @@ void main() {
 
 	LOG_INF("Application Event Manager initialized.");
 	module_set_state(MODULE_STATE_READY);
-	// TODO: Have a while loop here.
 	LOG_INF("Returned from module_set_state_ready");
-	k_sleep(K_SECONDS(5));
-	send_command("!start_scan;");
+	
 	while(true) {
-		k_sleep(K_SECONDS(1));
-		LOG_INF("Boop from 9160!");
-		k_sleep(K_SECONDS(1));
-		send_command("!red1;");
-		k_sleep(K_SECONDS(1));
-		send_command("!yellow1;");
-		k_sleep(K_SECONDS(1));
-		send_command("!green1;");
+		k_sleep(K_SECONDS(10));
+		LOG_INF("heartbeat");
 	}
 }

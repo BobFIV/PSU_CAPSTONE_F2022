@@ -251,23 +251,23 @@ void loop() {
     Serial.write(incomingChar);
   }
 
-  if(message == "red_on") {
+  if(message == "red1") {
     digitalWrite(rPin, HIGH);
     digitalWrite(yPin, LOW);
     digitalWrite(gPin, LOW);
   } 
-  else if (message == "green_on") {   
+  else if (message == "green1") {   
     digitalWrite(rPin, LOW);
     digitalWrite(yPin, LOW);
     digitalWrite(gPin, HIGH);
   
   }
-  else if (message == "yellow_on") {
+  else if (message == "yellow1") {
     digitalWrite(rPin, LOW);
     digitalWrite(yPin, HIGH);
     digitalWrite(gPin, LOW);
     
-  } else if (message == "off") {
+  } else if (message == "off1") {
     digitalWrite(rPin, LOW);
     digitalWrite(yPin, LOW);
     digitalWrite(gPin, LOW);
