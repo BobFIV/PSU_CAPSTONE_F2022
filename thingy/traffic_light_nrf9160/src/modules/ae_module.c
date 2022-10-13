@@ -58,6 +58,14 @@ void parse_nrf52840_char(char c) {
 			LOG_INF("Got BLE_DISCONNECTED from nRF52840!");
 			ble_connected = false;
 		}
+		else if (strncmp(backend_parse_buf, "SCAN_START", BACKEND_PARSE_BUFFER_SIZE) == 0) {
+			LOG_INF("Got BLE_SCAN_STARTED from nRF52840!");
+			ble_scanning = true;
+		}
+		else if (strncmp(backend_parse_buf, "SCAN_STOP", BACKEND_PARSE_BUFFER_SIZE) == 0) {
+			LOG_INF("Got BLE_SCAN_STOPPED from nRF52840!");
+			ble_scanning = false;
+		}
 		else {
 			LOG_ERR("Failed to parse message from nRF52840! %s", backend_parse_buf);
 		}
@@ -73,7 +81,7 @@ void parse_nrf52840_char(char c) {
 void ble_connection_management_thread() {
 	while(true) {
 		k_sleep(K_MSEC(500));
-		if (!ble_connected) {
+		if (!ble_connected && !ble_scanning) {
 			send_command("!start_scan;");
 		}
 	}
@@ -81,23 +89,26 @@ void ble_connection_management_thread() {
 
 void light_state_thread() {
 	while(true) {
-		// Simple color cycle
+		// Only send commands if we are connected to the ESP32
 		k_sleep(K_SECONDS(1));
-		if(light1_state == 2) {
-			light1_state = 3;
-			send_command("!yellow1;");
-		}
-		else if (light1_state == 3) {
-			light1_state = 4;
-			send_command("!green1;");
-		}
-		else if (light1_state == 4) {
-			light1_state = 2;
-			send_command("!red1;");
-		}
-		else {
-			light1_state = 2;
-			send_command("!red1;");
+		if (ble_connected) {
+			// Simple color cycle
+			if(light1_state == 2) {
+				light1_state = 3;
+				send_command("!yellow1;");
+			}
+			else if (light1_state == 3) {
+				light1_state = 4;
+				send_command("!green1;");
+			}
+			else if (light1_state == 4) {
+				light1_state = 2;
+				send_command("!red1;");
+			}
+			else {
+				light1_state = 2;
+				send_command("!red1;");
+			}
 		}
 	}
 }

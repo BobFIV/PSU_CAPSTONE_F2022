@@ -45,7 +45,6 @@ void parser_end() {
         LOG_WRN("parse buff len==0");
     }
     else {
-        LOG_DBG("parsed: %s\n", cmd_parse_buf);
         bool valid_cmd = false;
         enum ae_commands cmd;
         enum light_states state;
@@ -102,6 +101,7 @@ void parser_end() {
         }
 
         if (valid_cmd) {
+            // If we parsed a valid command, trigger it
             struct ae_command_event *event;
             event = new_ae_command_event();
             event->cmd = cmd;

@@ -394,6 +394,14 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			// 1 - device index (corresponds to UART1)
 			err = uart_tx_enqueue("!D;", 3, 1);
 		}
+		else if (event->cmd == BLE_CTRL_SCAN_STARTED) {
+			// 1 - device index (corresponds to UART1)
+			err = uart_tx_enqueue("!SCAN_START;", 12, 1);
+		}
+		else if (event->cmd == BLE_CTRL_SCAN_STOPPED) {
+			// 1 - device index (corresponds to UART1)
+			err = uart_tx_enqueue("!SCAN_STOP;", 11, 1);
+		}
 		else {
 			LOG_ERR("Unhandled BLE CTRL event! cmd: %d", event->cmd);
 			return false;

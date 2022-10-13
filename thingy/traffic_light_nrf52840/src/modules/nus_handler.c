@@ -45,6 +45,7 @@ K_SEM_DEFINE(nus_write_sem,1,1);
 static struct bt_conn *default_conn;
 static struct bt_nus_client nus_client;
 bool ble_connected = false;
+bool ble_scanning = false;
 
 static void ble_data_sent(struct bt_nus_client *nus, uint8_t err,
 					const uint8_t *const data, uint16_t len)
@@ -52,7 +53,6 @@ static void ble_data_sent(struct bt_nus_client *nus, uint8_t err,
 	ARG_UNUSED(nus);
 	ARG_UNUSED(data);
 	ARG_UNUSED(len);
-	LOG_INF("ble data sent()");
 
 	k_sem_give(&nus_write_sem);
 
@@ -173,6 +173,7 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	if ((!err) && (err != -EALREADY)) {
 		LOG_ERR("Stop LE scan failed (err %d)", err);
 	}
+	ble_scanning = false;
 
     // Fire off a CONNECTED event
 	struct ble_ctrl_event *event;
@@ -180,6 +181,12 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
     event->cmd = BLE_CTRL_CONNECTED;
     APP_EVENT_SUBMIT(event);
 	ble_connected = true;
+
+	// Fire off a SCANNING_STOPPED event
+	struct ble_ctrl_event *event2;
+    event2 = new_ble_ctrl_event();
+    event2->cmd = BLE_CTRL_SCAN_STOPPED;
+    APP_EVENT_SUBMIT(event2);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -389,15 +396,12 @@ void send_ble_command(char* s) {
 	// We must wait for the string to be sent over BLE, otherwise we risk invalidating the memory
 	int err = k_sem_take(&nus_write_sem, NUS_WRITE_TIMEOUT);
 	if (err) {
-		LOG_WRN("NUS send timeout");
+		LOG_ERR("NUS send timeout");
 	}
 
 	err = bt_nus_client_send(&nus_client, s, strlen(s));
 	if (err) {
-		LOG_WRN("Failed to send data over BLE connection (err %d)", err);
-	}
-	else {
-		LOG_INF("Sent command: %s", s);
+		LOG_ERR("Failed to send data over BLE connection (err %d)", err);
 	}
 }
 
@@ -410,25 +414,28 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_ae_command_event(aeh);
         switch (event->cmd) {
             case AE_CMD_START_SCAN:
-				if (ble_connected) {
-					 // Fire off a CONNECTED event
-					struct ble_ctrl_event *event;
-					event = new_ble_ctrl_event();
-					event->cmd = BLE_CTRL_CONNECTED;
-					APP_EVENT_SUBMIT(event);
+				err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
+				if (err) {
+					LOG_ERR("Scanning failed to start (err %d)", err);
 				}
-				else {
-					err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
-					if (err) {
-						LOG_ERR("Scanning failed to start (err %d)", err);
-					}
-				}
+				ble_scanning = true;
+				// Fire off a SCANNING_STARTED event
+				struct ble_ctrl_event *event2;
+				event2 = new_ble_ctrl_event();
+				event2->cmd = BLE_CTRL_SCAN_STARTED;
+				APP_EVENT_SUBMIT(event2);
             break;
             case AE_CMD_STOP_SCAN:
                 err = bt_scan_stop();
                 if ((!err) && (err != -EALREADY)) {
                     LOG_ERR("Stop LE scan failed (err %d)", err);
                 }
+				ble_scanning = false;
+				// Fire off a SCANNING_STOPPED event
+				struct ble_ctrl_event *event3;
+				event3 = new_ble_ctrl_event();
+				event3->cmd = BLE_CTRL_SCAN_STOPPED;
+				APP_EVENT_SUBMIT(event3);
             break;
             case AE_CMD_SET_STATE1:
                 //LOG_INF("AE CMD SET STATE 1");
