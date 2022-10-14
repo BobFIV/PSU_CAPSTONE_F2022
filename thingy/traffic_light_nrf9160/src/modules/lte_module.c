@@ -18,6 +18,7 @@
 #include "modules_common.h"
 #include "events/module_state_event.h"
 #include "events/modem_module_event.h"
+#include "events/lte_event.h"
 
 #ifdef CONFIG_LWM2M_CARRIER
 #include <lwm2m_carrier.h>
@@ -121,6 +122,17 @@ static void state_set(enum state_type new_state)
 		return;
 	}
 
+	if (new_state == STATE_CONNECTED) {
+		struct lte_event* conn_event = new_lte_event();
+		conn_event->conn_state = LTE_CONNECTED;
+		APP_EVENT_SUBMIT(conn_event);
+	}
+	else if (new_state == STATE_DISCONNECTED) {
+		struct lte_event* disconn_event = new_lte_event();
+		disconn_event->conn_state = LTE_DISCONNECTED;
+		APP_EVENT_SUBMIT(disconn_event);
+	}
+
 	LOG_INF("State transition %s --> %s",
 		state2str(state),
 		state2str(new_state));
@@ -133,6 +145,10 @@ static bool app_event_handler(const struct app_event_header *aeh)
 {
 	struct modem_msg_data msg = {0};
 	bool enqueue_msg = false;
+
+	if (is_lte_event(aeh)) {
+		return true;
+	}
 
 	if (is_modem_module_event(aeh)) {
 		struct modem_module_event *evt = cast_modem_module_event(aeh);
@@ -267,10 +283,12 @@ void pdn_event_handler(uint8_t cid, enum pdn_event event, int reason)
 	case PDN_EVENT_ACTIVATED:
 		LOG_DBG("PDN_EVENT_ACTIVATED");
 		{ SEND_EVENT(modem, MODEM_EVT_LTE_CONNECTED); }
+		
 		break;
 	case PDN_EVENT_DEACTIVATED:
 		LOG_DBG("PDN_EVENT_DEACTIVATED");
 		{ SEND_EVENT(modem, MODEM_EVT_LTE_DISCONNECTED); }
+		
 		break;
 	case PDN_EVENT_IPV6_UP:
 		LOG_DBG("PDN_EVENT_IPV6_UP");
@@ -886,3 +904,4 @@ K_THREAD_DEFINE(modem_module_thread, 2048,
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, modem_module_event);
+APP_EVENT_SUBSCRIBE_FINAL(MODULE, lte_event);
