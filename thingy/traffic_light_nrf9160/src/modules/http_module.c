@@ -8,8 +8,8 @@
 #include <zephyr/sys/ring_buffer.h>
 
 #define MODULE http_module
-#include "events/module_state_event.h"
-#include "events/uart_data_event.h"
+#include <caf/events/module_state_event.h>
+#include "events/lte_event.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
@@ -35,6 +35,19 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		return false;
 	}
 
+	if (is_lte_event(aeh)) {
+		const struct lte_event *event =
+			cast_lte_event(aeh);
+		if (event->conn_state == LTE_CONNECTED) {
+			LOG_INF("Got LTE_CONNECTED");
+        }
+		else if (event->conn_state == LTE_DISCONNECTED) {
+			LOG_INF("Got LTE_DISCONNECTED");
+        }
+
+		return false;
+	}
+
 	/* If event is unhandled, unsubscribe. */
 	__ASSERT_NO_MSG(false);
 
@@ -42,5 +55,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 }
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
+APP_EVENT_SUBSCRIBE(MODULE, lte_state_event);
 
 K_THREAD_DEFINE(web_poll_thread, 4096, web_poll, NULL, NULL, NULL, 10, 0, 0);

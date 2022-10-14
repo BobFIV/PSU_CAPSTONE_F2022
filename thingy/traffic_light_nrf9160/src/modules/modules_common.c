@@ -49,16 +49,6 @@ int module_get_next_msg(struct module_data *module, void *msg)
 		if (event->log_event_func) {
 			event->log_event_func(&evt_proto->header);
 		}
-#ifdef CONFIG_APP_EVENT_MANAGER_USE_DEPRECATED_LOG_FUN
-		else if (event->log_event_func_dep) {
-			char buf[50];
-
-			event->log_event_func_dep(&evt_proto->header, buf, sizeof(buf));
-			LOG_DBG("%s module: Dequeued %s",
-				module->name,
-				buf);
-		}
-#endif
 	}
 	return err;
 }
@@ -90,16 +80,6 @@ int module_enqueue_msg(struct module_data *module, void *msg)
 		if (event->log_event_func) {
 			event->log_event_func(&evt_proto->header);
 		}
-#ifdef CONFIG_APP_EVENT_MANAGER_USE_DEPRECATED_LOG_FUN
-		else if (event->log_event_func_dep) {
-			char buf[50];
-
-			event->log_event_func_dep(&evt_proto->header, buf, sizeof(buf));
-			LOG_DBG("%s module: Dequeued %s",
-				module->name,
-				buf);
-		}
-#endif
 	}
 
 	return 0;

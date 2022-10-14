@@ -16,7 +16,7 @@
 #define MODULE modem_module
 
 #include "modules_common.h"
-#include "events/module_state_event.h"
+#include <caf/events/module_state_event.h>
 #include "events/modem_module_event.h"
 #include "events/lte_event.h"
 

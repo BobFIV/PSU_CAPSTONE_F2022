@@ -17,7 +17,7 @@
 #include <app_event_manager.h>
 
 #define MODULE main
-#include "events/module_state_event.h"
+#include <caf/events/module_state_event.h>
 #define LOG_MODULE_NAME main
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 

@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#ifndef _LTE_EVENT_H_
-#define _LTE_EVENT_H_
+#ifndef _BLE_EVENT_H_
+#define _BLE_EVENT_H_
 
 /**
- * @brief LTE Connection Event
+ * @brief BLE Connection Event
  * @defgroup peer_conn_event Peer Connection Event
  * @{
  */
@@ -23,20 +23,21 @@
 extern "C" {
 #endif
 
-
-enum lte_conn_state {
-	LTE_CONNECTED,
-	LTE_DISCONNECTED
+enum ble_cmd {
+	BLE_CONNECTED,
+	BLE_DISCONNECTED,
+	BLE_SCAN_STARTED,
+	BLE_SCAN_STOPPED
 };
 
 /** Peer connection event. */
-struct lte_event {
+struct ble_event {
 	struct app_event_header header;
 
-	enum lte_conn_state conn_state;
+	enum ble_cmd cmd;
 };
 
-APP_EVENT_TYPE_DECLARE(lte_event);
+APP_EVENT_TYPE_DECLARE(ble_event);
 
 #ifdef __cplusplus
 }
@@ -46,4 +47,4 @@ APP_EVENT_TYPE_DECLARE(lte_event);
  * @}
  */
 
-#endif /* _LTE_EVENT_H_ */
+#endif /* _BLE_EVENT_H_ */

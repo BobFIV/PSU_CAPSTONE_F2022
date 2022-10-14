@@ -10,17 +10,22 @@ project(traffic_light_ae)
 
 target_sources(app PRIVATE
   src/main.c
-  src/events/uart_data_event.c
-  src/events/module_state_event.c
-  src/events/peer_conn_event.c
+
+  src/events/ble_event.c
+  src/events/led_state_event.c
   src/events/lte_event.c
   src/events/modem_module_event.c
-  src/modules/uart_handler.c
-  src/modules/at_handler.c
+  src/events/peer_conn_event.c
+  src/events/uart_data_event.c
+
   src/modules/ae_module.c
-  src/modules/modules_common.c
-  src/modules/lte_module.c
+  src/modules/at_handler.c
   src/modules/http_module.c
+  src/modules/lte_module.c
+  src/modules/led_module.c
+  src/modules/modules_common.c
+  src/modules/nrf52840_parser.c
+  src/modules/uart_handler.c
 )
 
 target_include_directories(app PRIVATE

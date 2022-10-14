@@ -10,7 +10,7 @@
 #include <zephyr/pm/device.h>
 
 #define MODULE uart_handler
-#include "events/module_state_event.h"
+#include <caf/events/module_state_event.h>
 #include "events/uart_data_event.h"
 
 #include <zephyr/logging/log.h>
