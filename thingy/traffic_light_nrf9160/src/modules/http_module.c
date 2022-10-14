@@ -29,7 +29,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_module_state_event(aeh);
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
-
+			LOG_INF("HTTP module setup");
 		}
 
 		return false;

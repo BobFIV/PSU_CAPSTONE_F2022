@@ -13,6 +13,7 @@ target_sources(app PRIVATE
   src/events/uart_data_event.c
   src/events/module_state_event.c
   src/events/peer_conn_event.c
+  src/events/lte_event.c
   src/modules/uart_handler.c
   src/modules/at_handler.c
   src/modules/ae_module.c

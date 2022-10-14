@@ -10,17 +10,9 @@
 
 #include <errno.h>
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/devicetree.h>
-#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/printk.h>
 
-#include <zephyr/settings/settings.h>
-
-#include <zephyr/drivers/uart.h>
-
 #include <zephyr/logging/log.h>
-#include <zephyr/console/console.h>
 
 #include <app_event_manager.h>
 
@@ -41,8 +33,9 @@ void main() {
 	module_set_state(MODULE_STATE_READY);
 	LOG_INF("Returned from module_set_state_ready");
 	
-	while(true) {
+	/*while(true) {
 		k_sleep(K_SECONDS(10));
 		LOG_INF("heartbeat");
-	}
+	}*/
+	
 }

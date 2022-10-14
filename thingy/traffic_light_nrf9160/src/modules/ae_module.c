@@ -12,11 +12,13 @@
 #define MODULE traffic_light_ae
 #include "events/module_state_event.h"
 #include "events/uart_data_event.h"
+#include "events/lte_event.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
 // AE state variables
+bool lte_connected = false;
 bool ble_connected = false;
 bool ble_scanning = false;
 int light1_state = 0; // 0 = unknown, 1 = off, 2 = red, 3 = yellow, 4 = green
@@ -81,6 +83,10 @@ void parse_nrf52840_char(char c) {
 void ble_connection_management_thread() {
 	while(true) {
 		k_sleep(K_MSEC(500));
+		if (!lte_connected) {
+			continue;
+			// Don't do anything with BLE until we have LTE
+		}
 		if (!ble_connected && !ble_scanning) {
 			send_command("!start_scan;");
 		}
@@ -91,6 +97,12 @@ void light_state_thread() {
 	while(true) {
 		// Only send commands if we are connected to the ESP32
 		k_sleep(K_SECONDS(1));
+		if (!lte_connected && ble_connected) {
+			light1_state = 3;
+			send_command("!red1;");
+			continue;
+			// Keep the light red until LTE connection is re-established
+		}
 		if (ble_connected) {
 			// Simple color cycle
 			if(light1_state == 2) {
@@ -130,6 +142,21 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		return false;
 	}
 
+	if (is_lte_event(aeh)) {
+		const struct lte_event *event =
+			cast_lte_event(aeh);
+		if (event->conn_state == LTE_CONNECTED) {
+			lte_connected = true;
+			LOG_INF("Got LTE_CONNECTED");
+        }
+		else if (event->conn_state == LTE_DISCONNECTED) {
+			lte_connected = false;
+			LOG_INF("Got LTE_DISCONNECTED");
+        }
+
+		return false;
+	}
+
 	if (is_module_state_event(aeh)) {
 		const struct module_state_event *event =
 			cast_module_state_event(aeh);
@@ -150,6 +177,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, uart_data_event);
+APP_EVENT_SUBSCRIBE(MODULE, lte_event);
 
-K_THREAD_DEFINE(ble_conn_mgr, 4096, ble_connection_management_thread, NULL, NULL, NULL, 7, 0, 0);
-K_THREAD_DEFINE(light_mgr, 4096, light_state_thread, NULL, NULL, NULL, 7, 0, 0);
+// Giving these threads positive priorities means that they are pre-emptible (ie. other threads with positive priorities will run first)
+//K_THREAD_DEFINE(ble_conn_mgr, 2048, ble_connection_management_thread, NULL, NULL, NULL, 7, 0, 0
+);
+//K_THREAD_DEFINE(light_mgr, 2048, light_state_thread, NULL, NULL, NULL, 10, 0, 0);

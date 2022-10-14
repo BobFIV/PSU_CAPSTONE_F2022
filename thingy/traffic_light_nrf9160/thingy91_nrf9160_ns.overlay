@@ -10,3 +10,8 @@
 	};
 };
 
+// Reenable the UART1 port, it is disabled by the _ns overlay DTS file
+&uart1 {
+	status = "okay";
+};
+
