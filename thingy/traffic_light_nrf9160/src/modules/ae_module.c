@@ -180,6 +180,5 @@ APP_EVENT_SUBSCRIBE(MODULE, uart_data_event);
 APP_EVENT_SUBSCRIBE(MODULE, lte_event);
 
 // Giving these threads positive priorities means that they are pre-emptible (ie. other threads with positive priorities will run first)
-//K_THREAD_DEFINE(ble_conn_mgr, 2048, ble_connection_management_thread, NULL, NULL, NULL, 7, 0, 0
-);
+//K_THREAD_DEFINE(ble_conn_mgr, 2048, ble_connection_management_thread, NULL, NULL, NULL, 7, 0, 0);
 //K_THREAD_DEFINE(light_mgr, 2048, light_state_thread, NULL, NULL, NULL, 10, 0, 0);

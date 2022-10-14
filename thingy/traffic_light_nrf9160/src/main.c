@@ -33,9 +33,8 @@ void main() {
 	module_set_state(MODULE_STATE_READY);
 	LOG_INF("Returned from module_set_state_ready");
 	
-	/*while(true) {
+	while(true) {
 		k_sleep(K_SECONDS(10));
 		LOG_INF("heartbeat");
-	}*/
-	
+	}
 }
