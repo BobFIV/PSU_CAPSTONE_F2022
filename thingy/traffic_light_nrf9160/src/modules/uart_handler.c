@@ -10,7 +10,7 @@
 #include <zephyr/pm/device.h>
 
 #define MODULE uart_handler
-#include "events/module_state_event.h"
+#include <caf/events/module_state_event.h>
 #include "events/uart_data_event.h"
 
 #include <zephyr/logging/log.h>
@@ -380,5 +380,5 @@ static bool app_event_handler(const struct app_event_header *aeh)
 	return false;
 }
 APP_EVENT_LISTENER(MODULE, app_event_handler);
-APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
+APP_EVENT_SUBSCRIBE_FIRST(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, uart_data_event);

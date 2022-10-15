@@ -10,7 +10,7 @@
 #include <zephyr/pm/device.h>
 
 #define MODULE at_handler
-#include "events/module_state_event.h"
+#include <caf/events/module_state_event.h>
 #include "events/uart_data_event.h"
 
 #include <zephyr/logging/log.h>
@@ -24,14 +24,12 @@ size_t parse_buf_idx = 0; // the location in the cmd_parse_buff that we are writ
 
 static bool app_event_handler(const struct app_event_header *aeh)
 {
-	int err;
-
 	if (is_uart_data_event(aeh)) {
 		const struct uart_data_event *event =
 			cast_uart_data_event(aeh);
 		if (event->dev_idx == 0) {
             // This is coming from the PC/upper tester
-            LOG_INF("UART0 data event: %c", event->buf);
+            //LOG_INF("UART0 data event: %c", event->buf);
 			// TODO: Parse AT commands.
         }
 

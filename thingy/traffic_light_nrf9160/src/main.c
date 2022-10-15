@@ -10,22 +10,14 @@
 
 #include <errno.h>
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/devicetree.h>
-#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/printk.h>
 
-#include <zephyr/settings/settings.h>
-
-#include <zephyr/drivers/uart.h>
-
 #include <zephyr/logging/log.h>
-#include <zephyr/console/console.h>
 
 #include <app_event_manager.h>
 
 #define MODULE main
-#include "events/module_state_event.h"
+#include <caf/events/module_state_event.h>
 #define LOG_MODULE_NAME main
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
