@@ -12,6 +12,7 @@ target_sources(app PRIVATE
   src/main.c
 
   src/events/ble_event.c
+  src/events/ae_event.c
   src/events/led_state_event.c
   src/events/lte_event.c
   src/events/modem_module_event.c

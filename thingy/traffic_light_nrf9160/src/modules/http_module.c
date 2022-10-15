@@ -12,9 +12,12 @@
 #include <net/net_ip.h>
 #include <net/http_client.h>
 
+#include <cJSON.h>
+
 #define MODULE http_module
 #include <caf/events/module_state_event.h>
 #include "events/lte_event.h"
+#include "events/ae_event.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
@@ -30,6 +33,8 @@ static char resolved_ip_addr[INET6_ADDRSTRLEN];
 static char http_rx_buf[HTTP_RX_BUF_SIZE];
 // A pointer into http_rx_buf that marks the start of the response body (ie. after the headers)
 static char* http_rx_body_start = 0;
+// Number of bytes long that the HTTP response body is
+size_t http_content_length = 0;
 // Socket used to make http connection
 static int http_socket = -1;
 // HTTP timeout is 10 seconds
@@ -38,10 +43,27 @@ static int32_t HTTP_REQUEST_TIMEOUT = 10 * MSEC_PER_SEC;
 // Take this semaphore when making an HTTP request, and then give it back when done with the http_rx_buf data.
 K_SEM_DEFINE(http_request_sem, 1, 1);
 
+// Define a heap for parsing and constructing JSON objects using cJSON
+K_HEAP_DEFINE(cjson_heap, 4096);
+
 struct addrinfo *addr_res;
 struct addrinfo addr_hints = {
 	.ai_family = AF_INET,
 	.ai_socktype = SOCK_STREAM
+};
+
+// We need to define these special functions for cJSON to call when doing malloc's and frees
+void* cjson_alloc(size_t size) {
+	return k_heap_alloc(&cjson_heap, size, K_FOREVER);
+}
+
+void cjson_free(void* ptr) {
+	k_heap_free(&cjson_heap, ptr);
+}
+
+struct cJSON_Hooks cjson_mem_hooks = {
+	.malloc_fn = cjson_alloc,
+	.free_fn = cjson_free
 };
 
 /* Gets and stores the respones from an HTTP request
@@ -95,7 +117,10 @@ static int get_request(char* url) {
 		// Look for the blank line
 		http_rx_body_start = strstr(http_rx_buf, "\r\n\r\n");
 		// We want to point to the first character of the body, not the empty line
-		http_rx_body_start += 4; 
+		http_rx_body_start += 4;
+		// Calculate the max possible response length
+		http_content_length = sizeof(http_rx_buf) - ((size_t) (&http_rx_buf[0] - http_rx_body_start));
+		LOG_INF("Content length is: %d", http_content_length);
 		return response_len;
 }
 
@@ -137,8 +162,50 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 		return -errno;
 	}
 	LOG_INF("Connected to %s", hostname_str);
-	http_connected = true;
 	return err;
+}
+
+static void web_poll() {
+	int err = 0;
+	while (true) {
+		k_sleep(K_SECONDS(2));
+		if (http_connected) {
+			k_sem_take(&http_request_sem, K_FOREVER);
+			err = get_request("/state.txt");
+			if (err <= 0) {
+				LOG_ERR("Empty or negative response code %d", err);
+			} 
+			else {
+				cJSON *parsed_json = cJSON_ParseWithLength(http_rx_body_start, http_content_length);
+				if (parsed_json == NULL)
+				{
+					LOG_ERR("Failed to parse light state from HTTP response!\nRESPONSE START\n%s\nRESPONSE END", http_rx_body_start);
+					const char *error_ptr = cJSON_GetErrorPtr();
+					if (error_ptr != NULL)
+					{
+						LOG_ERR("Error before: %s\n", error_ptr);
+					}
+				}
+				else {
+					const cJSON* light1_json = cJSON_GetObjectItemCaseSensitive(parsed_json, "light1");
+					if (cJSON_IsString(light1_json) && (light1_json->valuestring != NULL))
+					{
+						struct ae_event* light_event = new_ae_event();
+						light_event->cmd = AE_EVENT_LIGHT_CMD;
+						light_event->target_light = AE_LIGHT1;
+						light_event->new_light_state = string_to_light_state(light1_json->valuestring, 10);
+						APP_EVENT_SUBMIT(light_event);
+					}
+					else {
+						LOG_ERR("Failed to parse \"light1\" JSON field!");
+					}
+				}
+
+				cJSON_Delete(parsed_json);
+			}
+			k_sem_give(&http_request_sem);
+		}
+	}
 }
 
 static bool app_event_handler(const struct app_event_header *aeh)
@@ -150,14 +217,13 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
 			LOG_INF("HTTP module setup");
+			cJSON_InitHooks(&cjson_mem_hooks);
 		}
 
 		return false;
 	}
 
 	if (is_lte_event(aeh)) {
-		LOG_INF("Got LTE event");
-		k_sleep(K_SECONDS(5));
 		const struct lte_event *event = cast_lte_event(aeh);
 		if (event->conn_state == LTE_CONNECTED) {
 			LOG_INF("Got LTE_CONNECTED");
@@ -167,21 +233,17 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				LOG_ERR("connect_socket() failed!");
 				return false;
 			}
-			k_sem_take(&http_request_sem, K_FOREVER);
-			err = get_request("/test_message.txt");
-			if (err <= 0) {
-				LOG_ERR("Empty or negative response code %d", err);
-			} 
 			else {
-				LOG_INF("RESPONSE START\n%s\nRESPONSE END", http_rx_body_start);
+				LOG_INF("HTTP CONNECTED");
+				http_connected = true;
 			}
-			k_sem_give(&http_request_sem);
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
 			LOG_INF("Got LTE_DISCONNECTED");
 			if (http_connected) {
 				close(http_socket);
 				http_connected = false;
+				LOG_INF("HTTP DISCONNECTED");
 			}
         }
 
@@ -197,4 +259,4 @@ APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, lte_event);
 
-//K_THREAD_DEFINE(web_poll_thread, 4096, web_poll, NULL, NULL, NULL, 10, 0, 0);
+K_THREAD_DEFINE(web_poll_thread, 5120, web_poll, NULL, NULL, NULL, 10, 0, 0);
