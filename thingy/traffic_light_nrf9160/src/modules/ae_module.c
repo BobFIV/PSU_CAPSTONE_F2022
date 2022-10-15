@@ -157,6 +157,11 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				set_green_led();
 				update_light_states();
 			}
+			else {
+				light1_state = AE_LIGHT_RED;
+				light2_state = AE_LIGHT_RED;
+				update_light_states();
+			}
         }
 		else if (event->cmd == BLE_DISCONNECTED) {
 			ble_connected = false;
