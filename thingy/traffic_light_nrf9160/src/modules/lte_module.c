@@ -20,22 +20,11 @@
 #include "events/modem_module_event.h"
 #include "events/lte_event.h"
 
-#ifdef CONFIG_LWM2M_CARRIER
-#include <lwm2m_carrier.h>
-#endif /* CONFIG_LWM2M_CARRIER */
-
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT),
 		"The Modem module does not support this configuration");
-
-#ifdef CONFIG_APP_REQUEST_NEIGHBOR_CELLS_DATA
-BUILD_ASSERT(CONFIG_AT_MONITOR_HEAP_SIZE >= 1024,
-	    "CONFIG_AT_MONITOR_HEAP_SIZE must be >= 1024 to fit neighbor cell measurements "
-	    "and other notifications at the same time");
-#endif
-
 
 struct modem_msg_data {
 	union {
@@ -122,6 +111,10 @@ static void state_set(enum state_type new_state)
 		return;
 	}
 
+	LOG_INF("State transition %s --> %s",
+		state2str(state),
+		state2str(new_state));
+
 	if (new_state == STATE_CONNECTED) {
 		struct lte_event* conn_event = new_lte_event();
 		conn_event->conn_state = LTE_CONNECTED;
@@ -133,10 +126,6 @@ static void state_set(enum state_type new_state)
 		APP_EVENT_SUBMIT(disconn_event);
 	}
 
-	LOG_INF("State transition %s --> %s",
-		state2str(state),
-		state2str(new_state));
-
 	state = new_state;
 }
 
@@ -145,10 +134,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 {
 	struct modem_msg_data msg = {0};
 	bool enqueue_msg = false;
-
-	if (is_lte_event(aeh)) {
-		return true;
-	}
 
 	if (is_modem_module_event(aeh)) {
 		struct modem_module_event *evt = cast_modem_module_event(aeh);
@@ -421,214 +406,6 @@ static void send_neighbor_cell_update(struct lte_lc_cells_info *cell_info)
 	APP_EVENT_SUBMIT(evt);
 }
 
-static int static_modem_data_get(void)
-{
-	int err;
-
-	/* Request data from modem information module. */
-	err = modem_info_params_get(&modem_param);
-	if (err) {
-		LOG_ERR("modem_info_params_get, error: %d", err);
-		return err;
-	}
-
-	struct modem_module_event *modem_module_event = new_modem_module_event();
-
-	strncpy(modem_module_event->data.modem_static.app_version,
-		"4",
-		sizeof(modem_module_event->data.modem_static.app_version) - 1);
-
-	strncpy(modem_module_event->data.modem_static.board_version,
-		modem_param.device.board,
-		sizeof(modem_module_event->data.modem_static.board_version) - 1);
-
-	strncpy(modem_module_event->data.modem_static.modem_fw,
-		modem_param.device.modem_fw.value_string,
-		sizeof(modem_module_event->data.modem_static.modem_fw) - 1);
-
-	strncpy(modem_module_event->data.modem_static.iccid,
-		modem_param.sim.iccid.value_string,
-		sizeof(modem_module_event->data.modem_static.iccid) - 1);
-
-	strncpy(modem_module_event->data.modem_static.imei,
-		modem_param.device.imei.value_string,
-		sizeof(modem_module_event->data.modem_static.imei) - 1);
-
-	modem_module_event->data.modem_static.app_version
-		[sizeof(modem_module_event->data.modem_static.app_version) - 1] = '\0';
-
-	modem_module_event->data.modem_static.board_version
-		[sizeof(modem_module_event->data.modem_static.board_version) - 1] = '\0';
-
-	modem_module_event->data.modem_static.modem_fw
-		[sizeof(modem_module_event->data.modem_static.modem_fw) - 1] = '\0';
-
-	modem_module_event->data.modem_static.iccid
-		[sizeof(modem_module_event->data.modem_static.iccid) - 1] = '\0';
-
-	modem_module_event->data.modem_static.imei
-		[sizeof(modem_module_event->data.modem_static.imei) - 1] = '\0';
-
-	modem_module_event->data.modem_static.timestamp = k_uptime_get();
-	modem_module_event->type = MODEM_EVT_MODEM_STATIC_DATA_READY;
-
-	APP_EVENT_SUBMIT(modem_module_event);
-	return 0;
-}
-
-static void populate_event_with_dynamic_modem_data(struct modem_module_event *event,
-						   struct modem_param_info *param)
-{
-	/* If this flag is set all sampled parameter values will be included in the event regardless
-	 * if they have changed or not.
-	 */
-	bool include = IS_ENABLED(CONFIG_MODEM_SEND_ALL_SAMPLED_DATA);
-
-	/* Flag that checks if parameters has been added to the event. */
-	bool params_added = false;
-
-	/* Set all entries in the dynamic modem data structure to 0 to be sure that all 'fresh'
-	 * flags become false by default. This is to avoid sending garbage or old data due to a flag
-	 * being accidently set to true.
-	 */
-	memset(&event->data.modem_dynamic, 0, sizeof(struct modem_module_dynamic_modem_data));
-
-	/* Structure that holds previous sampled dynamic modem data. By default, set all members of
-	 * the structure to invalid values.
-	 */
-	static struct modem_module_dynamic_modem_data prev = {
-		.rsrp = UINT8_MAX,
-		.nw_mode = LTE_LC_LTE_MODE_NONE,
-	};
-
-	/* Compare the latest sampled parameters with the previous. If there has been a change we
-	 * want to include the parameters in the event.
-	 */
-	if ((prev.rsrp != rsrp_value_latest) || include) {
-		event->data.modem_dynamic.rsrp = rsrp_value_latest;
-		prev.rsrp = rsrp_value_latest;
-
-		event->data.modem_dynamic.rsrp_fresh = true;
-		params_added = true;
-	}
-
-	if ((prev.band != param->network.current_band.value) || include) {
-		event->data.modem_dynamic.band = param->network.current_band.value;
-		prev.band = param->network.current_band.value;
-
-		event->data.modem_dynamic.band_fresh = true;
-		params_added = true;
-	}
-
-	if ((prev.nw_mode != nw_mode_latest) || include) {
-		event->data.modem_dynamic.nw_mode = nw_mode_latest;
-		prev.nw_mode = nw_mode_latest;
-
-		event->data.modem_dynamic.nw_mode_fresh = true;
-		params_added = true;
-	}
-
-	if ((strcmp(prev.apn, param->network.apn.value_string) != 0) || include) {
-		strncpy(event->data.modem_dynamic.apn,
-			modem_param.network.apn.value_string,
-			sizeof(event->data.modem_dynamic.apn) - 1);
-
-		strncpy(prev.apn,
-			param->network.apn.value_string,
-			sizeof(prev.apn) - 1);
-
-		event->data.modem_dynamic.apn
-			[sizeof(event->data.modem_dynamic.apn) - 1] = '\0';
-
-		prev.apn[sizeof(prev.apn) - 1] = '\0';
-
-		event->data.modem_dynamic.apn_fresh = true;
-		params_added = true;
-	}
-
-	if ((strcmp(prev.ip_address, param->network.ip_address.value_string) != 0) || include) {
-		strncpy(event->data.modem_dynamic.ip_address,
-			modem_param.network.ip_address.value_string,
-			sizeof(event->data.modem_dynamic.ip_address) - 1);
-
-		strncpy(prev.ip_address,
-			param->network.ip_address.value_string,
-			sizeof(prev.ip_address) - 1);
-
-		event->data.modem_dynamic.ip_address
-			[sizeof(event->data.modem_dynamic.ip_address) - 1] = '\0';
-
-		prev.ip_address[sizeof(prev.ip_address) - 1] = '\0';
-
-		event->data.modem_dynamic.ip_address_fresh = true;
-		params_added = true;
-	}
-
-	if ((prev.cell_id != param->network.cellid_dec) || include) {
-		event->data.modem_dynamic.cell_id = param->network.cellid_dec;
-		prev.cell_id = param->network.cellid_dec;
-
-		event->data.modem_dynamic.cell_id_fresh = true;
-		params_added = true;
-	}
-
-	if ((strcmp(prev.mccmnc, param->network.current_operator.value_string) != 0) || include) {
-		strncpy(event->data.modem_dynamic.mccmnc,
-			modem_param.network.current_operator.value_string,
-			sizeof(event->data.modem_dynamic.mccmnc));
-
-		strncpy(prev.mccmnc, param->network.current_operator.value_string,
-			sizeof(prev.mccmnc));
-
-		event->data.modem_dynamic.mccmnc
-			[sizeof(event->data.modem_dynamic.mccmnc) - 1] = '\0';
-
-		prev.mccmnc[sizeof(prev.mccmnc) - 1] = '\0';
-
-		/* Provide MNC and MCC as separate values. */
-		event->data.modem_dynamic.mcc = modem_param.network.mcc.value;
-		event->data.modem_dynamic.mnc = modem_param.network.mnc.value;
-
-		event->data.modem_dynamic.mccmnc_fresh = true;
-		params_added = true;
-	}
-
-	if ((prev.area_code != modem_param.network.area_code.value) || include) {
-		event->data.modem_dynamic.area_code = param->network.area_code.value;
-		prev.area_code = param->network.area_code.value;
-
-		event->data.modem_dynamic.area_code_fresh = true;
-		params_added = true;
-	}
-
-	if (params_added) {
-		event->type = MODEM_EVT_MODEM_DYNAMIC_DATA_READY;
-		event->data.modem_dynamic.timestamp = k_uptime_get();
-	} else {
-		LOG_DBG("No dynamic modem parameters have changed from the last sample request.");
-		event->type = MODEM_EVT_MODEM_DYNAMIC_DATA_NOT_READY;
-	}
-}
-
-static int dynamic_modem_data_get(void)
-{
-	int err;
-
-	/* Request data from modem information module. */
-	err = modem_info_params_get(&modem_param);
-	if (err) {
-		LOG_ERR("modem_info_params_get, error: %d", err);
-		return err;
-	}
-
-	struct modem_module_event *modem_module_event = new_modem_module_event();
-
-	populate_event_with_dynamic_modem_data(modem_module_event, &modem_param);
-
-	APP_EVENT_SUBMIT(modem_module_event);
-	return 0;
-}
-
 static int configure_low_power(void)
 {
 	int err;
@@ -784,7 +561,7 @@ static void on_state_connecting(struct modem_msg_data *msg)
 
 		state_set(STATE_DISCONNECTED);
 	}*/
-	LOG_INF("on state connectiong");
+	LOG_INF("on state connecting");
 	if (IS_EVENT(msg, modem, MODEM_EVT_LTE_CONNECTED)) {
 		state_set(STATE_CONNECTED);
 	}
@@ -825,22 +602,7 @@ static void on_state_connected(struct modem_msg_data *msg)
 /* Message handler for all states. */
 static void on_all_states(struct modem_msg_data *msg)
 {
-/*
-	if (IS_EVENT(msg, app, APP_EVT_START)) {
-		int err;
 
-		if (IS_ENABLED(CONFIG_LWM2M_CARRIER)) {
-			
-			return;
-		}
-
-		err = lte_connect();
-		if (err) {
-			LOG_ERR("Failed connecting to LTE, error: %d", err);
-			SEND_ERROR(modem, MODEM_EVT_ERROR, err);
-			return;
-		}
-	}*/
 }
 
 static void module_thread_fn(void)
@@ -897,11 +659,10 @@ static void module_thread_fn(void)
 	}
 }
 
-K_THREAD_DEFINE(modem_module_thread, 2048,
+K_THREAD_DEFINE(modem_module_thread, 4096,
 		module_thread_fn, NULL, NULL, NULL,
 		K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
 
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE_FINAL(MODULE, modem_module_event);
-APP_EVENT_SUBSCRIBE_FINAL(MODULE, lte_event);

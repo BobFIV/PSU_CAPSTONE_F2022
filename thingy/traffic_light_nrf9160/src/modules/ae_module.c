@@ -5,9 +5,8 @@
  */
 
 #include <zephyr/types.h>
-#include <zephyr/sys/ring_buffer.h>
-#include <zephyr/drivers/uart.h>
 #include <zephyr/pm/device.h>
+#include <string.h>
 
 #define MODULE traffic_light_ae
 #include <caf/events/module_state_event.h>
@@ -27,7 +26,7 @@ int light2_state = 0; // 0 = unknown, 1 = off, 2 = red, 3 = yellow, 4 = green
 
 extern int uart_tx_enqueue(uint8_t *data, size_t data_len, uint8_t dev_idx); // from uart_handler.c
 void send_command(const char* cmd) {
-	LOG_INF("sending: %s", cmd);
+	//LOG_INF("sending: %s", cmd);
 	// Device index of 1 is to send to nRF52840
 	uart_tx_enqueue((uint8_t*) cmd, strnlen(cmd, 30), 1);
 }
@@ -127,13 +126,13 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		if (event->cmd == BLE_CONNECTED) {
 			ble_connected = true;
 			if (lte_connected) {
-				set_green_led();
+				//set_green_led();
 			}
         }
 		else if (event->cmd == BLE_DISCONNECTED) {
 			ble_connected = false;
 			if (lte_connected) {
-				set_blue_led();
+				//set_blue_led();
 			}
         }
 		else if (event->cmd == BLE_SCAN_STARTED) {
@@ -152,7 +151,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
 			send_command("!start_scan;");
-			set_yellow_led();
+			//set_yellow_led();
 		}
 
 		return false;
