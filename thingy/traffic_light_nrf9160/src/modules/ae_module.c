@@ -29,7 +29,6 @@ enum ae_light_states light1_state = AE_LIGHT_RED;
 enum ae_light_states light2_state = AE_LIGHT_RED;
 
 void send_command(const char* cmd) {
-	//LOG_INF("sending: %s", cmd);
 	// Device index of 1 is to send to nRF52840
 	uart_tx_enqueue((uint8_t*) cmd, strnlen(cmd, 30), 1);
 }
@@ -127,8 +126,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 	}
 
 	if (is_lte_event(aeh)) {
-		const struct lte_event *event =
-			cast_lte_event(aeh);
+		const struct lte_event *event = cast_lte_event(aeh);
 		if (event->conn_state == LTE_CONNECTED) {
 			lte_connected = true;
 			LOG_INF("Got LTE_CONNECTED");
@@ -152,8 +150,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 	}
 
 	if (is_ble_event(aeh)) {
-		const struct ble_event *event =
-			cast_ble_event(aeh);
+		const struct ble_event *event = cast_ble_event(aeh);
 		if (event->cmd == BLE_CONNECTED) {
 			ble_connected = true;
 			if (lte_connected) {

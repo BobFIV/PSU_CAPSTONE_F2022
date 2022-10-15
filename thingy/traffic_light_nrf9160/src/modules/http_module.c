@@ -26,6 +26,9 @@ LOG_MODULE_REGISTER(MODULE);
 #define ENDPOINT_PORT 80
 
 #define HTTP_RX_BUF_SIZE 2048
+
+static int connect_socket(const char *hostname_str, int port, int *sock);
+
 bool http_connected = false;
 // String representation of the resolved IP address
 static char resolved_ip_addr[INET6_ADDRSTRLEN];
@@ -109,9 +112,35 @@ static int get_request(char* url) {
 		req.recv_buf = &http_rx_buf[0];
 		req.recv_buf_len = sizeof(http_rx_buf);
 
-		int response_len = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
-		if (response_len < 0) {
-			LOG_ERR("http_client_req returned %d !", response_len);
+		int retry_count = 0;
+		int response = 0;
+		bool ok = false;
+		while (retry_count < 3) {
+			response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
+			if (response < 0) {
+				LOG_ERR("http_client_req returned %d !", response);
+				if (response == -128) {
+					http_connected = false;
+					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
+					if (reconnect_response < 0) {
+						LOG_ERR("connect_socket() failed!");
+						return -2;
+					}
+					else {
+						LOG_INF("HTTP CONNECTED");
+						http_connected = true;
+					}
+				}
+				retry_count++;
+				continue;
+			}
+			else {
+				ok = true;
+				break;
+			}
+		}
+		if (!ok) {
+			LOG_ERR("Retried %d times, quitting request!", retry_count);
 			return -1;
 		}
 		// Look for the blank line
@@ -121,7 +150,7 @@ static int get_request(char* url) {
 		// Calculate the max possible response length
 		http_content_length = sizeof(http_rx_buf) - ((size_t) (&http_rx_buf[0] - http_rx_body_start));
 		LOG_INF("Content length is: %d", http_content_length);
-		return response_len;
+		return response;
 }
 
 /* connects a socket to an HTTP addr:port/url
