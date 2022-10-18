@@ -26,3 +26,20 @@ app.post('/api', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 })
+
+app.get('/state', (req, res) =>{
+    const { body } = req;
+    fs.readFile('./light.json', (err, lightstring) => {
+        if (err) {
+            console.log(err);
+        }console.log(lightstring);
+        res.status(200).send(lightstring);
+
+        // try{
+        //     const lightStatus = JSON.parse(lightstring);
+        //     console.log(lightStatus.light1);
+        // } catch (err) {
+        //     console.log("Error parsing JSON string:", err);
+        // }
+    });
+})
