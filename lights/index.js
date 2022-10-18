@@ -3,7 +3,7 @@ const fs = require('fs');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 80;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -21,11 +21,11 @@ app.post('/api', (req, res) => {
     });
 
     res.status(200).send('Success');
-})
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-})
+});
 
 app.get('/state', (req, res) =>{
     const { body } = req;
@@ -34,12 +34,15 @@ app.get('/state', (req, res) =>{
             console.log(err);
         }console.log(lightstring);
         res.status(200).send(lightstring);
-
-        // try{
-        //     const lightStatus = JSON.parse(lightstring);
-        //     console.log(lightStatus.light1);
-        // } catch (err) {
-        //     console.log("Error parsing JSON string:", err);
-        // }
     });
-})
+});
+
+app.get('/api', (req, res) =>{
+    const { body } = req;
+    fs.readFile('./client.html', (err, htmlstring) => {
+        if (err) {
+            console.log(err);
+        }console.log(htmlstring);
+        res.status(200).send(htmlstring);
+    });
+});
