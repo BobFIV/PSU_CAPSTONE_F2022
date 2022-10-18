@@ -34,14 +34,6 @@ app.get('/state', (req, res) =>{
             console.log(err);
             res.status(500).send('Error');
         }
-        const data = JSON.parse(lightstring);
-        res.status(200).send(data.light1);
-
-        // try{
-        //     const lightStatus = JSON.parse(lightstring);
-        //     console.log(lightStatus.light1);
-        // } catch (err) {
-        //     console.log("Error parsing JSON string:", err);
-        // }
+        res.status(200).send(lightstring);
     });
 })
