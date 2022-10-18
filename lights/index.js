@@ -3,7 +3,7 @@ const fs = require('fs');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 80;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,8 +32,10 @@ app.get('/state', (req, res) =>{
     fs.readFile('./light.json', (err, lightstring) => {
         if (err) {
             console.log(err);
-        }console.log(lightstring);
-        res.status(200).send(lightstring);
+            res.status(500).send('Error');
+        }
+        const data = JSON.parse(lightstring);
+        res.status(200).send(data.light1);
 
         // try{
         //     const lightStatus = JSON.parse(lightstring);
