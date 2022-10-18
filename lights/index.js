@@ -13,7 +13,7 @@ app.post('/api', (req, res) => {
     const { body } = req;
     const { light } = body;
 
-    fs.writeFile('light.txt', `light=${light}`, (err) => {
+    fs.writeFile('light.json', `{"light1":"${light}"}`, (err) => {
         if (err) {
             console.log(err);
             res.status(500).send('Error');
