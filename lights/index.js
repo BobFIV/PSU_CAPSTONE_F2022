@@ -3,7 +3,7 @@ const fs = require('fs');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 80;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -21,11 +21,9 @@ app.post('/api', (req, res) => {
     });
 
     res.status(200).send('Success');
-})
+});
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-})
+app.use(express.static("./public"));
 
 app.get('/state', (req, res) =>{
     const { body } = req;
@@ -36,4 +34,8 @@ app.get('/state', (req, res) =>{
         }
         res.status(200).send(lightstring);
     });
-})
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+	<title>Traffic Light AE</title>
+	<script type="text/javascript" >
+		function sendState(s) {
+			console.log(s);
+			axios.post("/api", { light: s });
+		}
+	</script>
+	</head>
+	<body>
+		<h2>Traffic Light Controller</h2>
+		<button onclick="sendState('red')" >Red</button>
+		<button onclick="sendState('yellow')" >Yellow</button>
+		<button onclick="sendState('green')" >Green</button>
+		<button onclick="sendState('off')" >Off</button>
+	</body>
+</html>
