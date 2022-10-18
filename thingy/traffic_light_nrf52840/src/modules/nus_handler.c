@@ -181,12 +181,6 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
     event->cmd = BLE_CTRL_CONNECTED;
     APP_EVENT_SUBMIT(event);
 	ble_connected = true;
-
-	// Fire off a SCANNING_STOPPED event
-	struct ble_ctrl_event *event2;
-    event2 = new_ble_ctrl_event();
-    event2->cmd = BLE_CTRL_SCAN_STOPPED;
-    APP_EVENT_SUBMIT(event2);
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -414,24 +408,28 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_ae_command_event(aeh);
         switch (event->cmd) {
             case AE_CMD_START_SCAN:
-				err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
-				if (err) {
-					LOG_ERR("Scanning failed to start (err %d)", err);
+				if (!ble_scanning) {
+					err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
+					if (err) {
+						LOG_ERR("Scanning failed to start (err %d)", err);
+					}
+					ble_scanning = true;
 				}
-				ble_scanning = true;
-				// Fire off a SCANNING_STARTED event
+				// Fire off a SCANNING_STARTED event so that the AE knows we are scanning
 				struct ble_ctrl_event *event2;
 				event2 = new_ble_ctrl_event();
 				event2->cmd = BLE_CTRL_SCAN_STARTED;
 				APP_EVENT_SUBMIT(event2);
             break;
             case AE_CMD_STOP_SCAN:
-                err = bt_scan_stop();
-                if ((!err) && (err != -EALREADY)) {
-                    LOG_ERR("Stop LE scan failed (err %d)", err);
-                }
+                if (ble_scanning) {
+					err = bt_scan_stop();
+					if ((!err) && (err != -EALREADY)) {
+						LOG_ERR("Stop LE scan failed (err %d)", err);
+					}
+				}
 				ble_scanning = false;
-				// Fire off a SCANNING_STOPPED event
+				// Fire off a SCANNING_STOPPED event so that the AE knows we are not scanning
 				struct ble_ctrl_event *event3;
 				event3 = new_ble_ctrl_event();
 				event3->cmd = BLE_CTRL_SCAN_STOPPED;

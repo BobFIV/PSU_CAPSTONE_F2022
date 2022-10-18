@@ -6,6 +6,7 @@
 
 #include <zephyr/types.h>
 
+#include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <net/socket.h>
@@ -47,7 +48,7 @@ static int32_t HTTP_REQUEST_TIMEOUT = 10 * MSEC_PER_SEC;
 K_SEM_DEFINE(http_request_sem, 1, 1);
 
 // Define a heap for parsing and constructing JSON objects using cJSON
-K_HEAP_DEFINE(cjson_heap, 4096);
+K_HEAP_DEFINE(cjson_heap, 5120);
 
 struct addrinfo *addr_res;
 struct addrinfo addr_hints = {
@@ -83,11 +84,20 @@ static void response_cb(struct http_response *rsp,
 	else if (final_data == HTTP_DATA_FINAL)
 	{
 		LOG_INF("All the data received (%zd bytes)", rsp->data_len);
+		if (rsp->body_found) {
+			http_rx_body_start = rsp->body_frag_start;
+			http_content_length = rsp->body_frag_len;
+		}
+		else {
+			LOG_WRN("No content returned from HTTP request!");
+			http_content_length = 0;
+		}
 	}
 
 	LOG_INF("Response status %s", rsp->http_status);
 }
 
+// Returns the number of bytes in the response body, or a negative error value
 static int get_request(char* url) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
@@ -100,7 +110,7 @@ static int get_request(char* url) {
 		}
 
 		// Clear out the response buffer
-		memset(&http_rx_buf, 0, sizeof(http_rx_buf));
+		memset(&http_rx_buf, 0, HTTP_RX_BUF_SIZE);
 		// Create a new request
 		struct http_request req;
 		memset(&req, 0, sizeof(req));
@@ -110,7 +120,11 @@ static int get_request(char* url) {
 		req.protocol = "HTTP/1.1";
 		req.response = response_cb;
 		req.recv_buf = &http_rx_buf[0];
-		req.recv_buf_len = sizeof(http_rx_buf);
+		req.recv_buf_len = HTTP_RX_BUF_SIZE;
+		const char *headers[] = {
+            "Keep-Alive: timeout=10, max=100\r\n",
+            NULL};
+		req.header_fields = headers;
 
 		int retry_count = 0;
 		int response = 0;
@@ -119,7 +133,8 @@ static int get_request(char* url) {
 			response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
 			if (response < 0) {
 				LOG_ERR("http_client_req returned %d !", response);
-				if (response == -128) {
+				if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET) {
+					close(http_socket);
 					http_connected = false;
 					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
 					if (reconnect_response < 0) {
@@ -143,14 +158,8 @@ static int get_request(char* url) {
 			LOG_ERR("Retried %d times, quitting request!", retry_count);
 			return -1;
 		}
-		// Look for the blank line
-		http_rx_body_start = strstr(http_rx_buf, "\r\n\r\n");
-		// We want to point to the first character of the body, not the empty line
-		http_rx_body_start += 4;
-		// Calculate the max possible response length
-		http_content_length = sizeof(http_rx_buf) - ((size_t) (&http_rx_buf[0] - http_rx_body_start));
-		LOG_INF("Content length is: %d", http_content_length);
-		return response;
+
+		return http_content_length;
 }
 
 /* connects a socket to an HTTP addr:port/url
@@ -195,16 +204,21 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 }
 
 static void web_poll() {
-	int err = 0;
+	int result = 0;
 	while (true) {
 		k_sleep(K_SECONDS(2));
 		if (http_connected) {
 			k_sem_take(&http_request_sem, K_FOREVER);
-			err = get_request("/state.txt");
-			if (err <= 0) {
-				LOG_ERR("Empty or negative response code %d", err);
+			result = get_request("/state.txt");
+			if (result < 0) {
+				LOG_ERR("get_request() negative response code %d", result);
 			} 
+			if (result == 0) {
+				// Sometimes we will get an empty response body because the state is unchanged + the apache server is using E-Tags for caching
+				LOG_WRN("Empty response body.");
+			}
 			else {
+				
 				cJSON *parsed_json = cJSON_ParseWithLength(http_rx_body_start, http_content_length);
 				if (parsed_json == NULL)
 				{
