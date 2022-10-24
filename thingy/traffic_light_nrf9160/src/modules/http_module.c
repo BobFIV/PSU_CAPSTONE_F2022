@@ -29,6 +29,7 @@ LOG_MODULE_REGISTER(MODULE);
 #define HTTP_RX_BUF_SIZE 2048
 
 static int connect_socket(const char *hostname_str, int port, int *sock);
+static int perform_http_request();
 
 bool http_connected = false;
 // String representation of the resolved IP address
@@ -97,13 +98,49 @@ static void response_cb(struct http_response *rsp,
 	LOG_INF("Response status %s", rsp->http_status);
 }
 
+static int perform_http_request(struct http_request* req) {
+	int retry_count = 0;
+	int response = 0;
+	bool ok = false;
+	while (retry_count < 3) {
+		response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
+		if (response < 0) {
+			LOG_ERR("http_client_req returned %d !", response);
+			if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
+				close(http_socket);
+				http_connected = false;
+				int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
+				if (reconnect_response < 0) {
+					LOG_ERR("connect_socket() failed!");
+					return -2;
+				}
+				else {
+					LOG_INF("HTTP CONNECTED");
+					http_connected = true;
+				}
+			}
+			retry_count++;
+			continue;
+		}
+		else {
+			ok = true;
+			break;
+		}
+	}
+	if (!ok) {
+		LOG_ERR("Retried %d times, quitting request!", retry_count);
+		return -1;
+	}
+
+	return http_content_length;
+}
+
 // Returns the number of bytes in the response body, or a negative error value
-static int get_request(char* url) {
+static int get_request(char* host, char* url) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
 		//
-
 		if (!http_connected) {
 			LOG_WRN("Attempted to call get_request %s when http_connected is false!", url);
 			return -1;
@@ -114,9 +151,10 @@ static int get_request(char* url) {
 		// Create a new request
 		struct http_request req;
 		memset(&req, 0, sizeof(req));
+		// Fill out the request parameters
 		req.method = HTTP_GET;
 		req.url = url;
-		req.host = ENDPOINT_HOSTNAME;
+		req.host = host;
 		req.protocol = "HTTP/1.1";
 		req.response = response_cb;
 		req.recv_buf = &http_rx_buf[0];
@@ -124,42 +162,10 @@ static int get_request(char* url) {
 		const char *headers[] = {
             "Keep-Alive: timeout=10, max=100\r\n",
             NULL};
+		// TODO: Allow user to perform this function with additional custom header
 		req.header_fields = headers;
 
-		int retry_count = 0;
-		int response = 0;
-		bool ok = false;
-		while (retry_count < 3) {
-			response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
-			if (response < 0) {
-				LOG_ERR("http_client_req returned %d !", response);
-				if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
-					close(http_socket);
-					http_connected = false;
-					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
-					if (reconnect_response < 0) {
-						LOG_ERR("connect_socket() failed!");
-						return -2;
-					}
-					else {
-						LOG_INF("HTTP CONNECTED");
-						http_connected = true;
-					}
-				}
-				retry_count++;
-				continue;
-			}
-			else {
-				ok = true;
-				break;
-			}
-		}
-		if (!ok) {
-			LOG_ERR("Retried %d times, quitting request!", retry_count);
-			return -1;
-		}
-
-		return http_content_length;
+		return perform_http_request(&req);
 }
 
 /* connects a socket to an HTTP addr:port/url
@@ -209,7 +215,7 @@ static void web_poll() {
 		k_sleep(K_SECONDS(2));
 		if (http_connected) {
 			k_sem_take(&http_request_sem, K_FOREVER);
-			result = get_request("/state");
+			result = get_request(ENDPOINT_HOSTNAME, "/state");
 			if (result < 0) {
 				LOG_ERR("get_request() negative response code %d", result);
 			} 
