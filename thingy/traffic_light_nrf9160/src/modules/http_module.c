@@ -110,7 +110,7 @@ static int get_request(char* url) {
 		}
 
 		// Clear out the response buffer
-		memset(&http_rx_buf, 0, HTTP_RX_BUF_SIZE);
+		memset(&http_rx_buf[0], 0, HTTP_RX_BUF_SIZE);
 		// Create a new request
 		struct http_request req;
 		memset(&req, 0, sizeof(req));
@@ -174,7 +174,7 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 		return -1;
 	}
 
-	((struct sockaddr_in *)addr_res->ai_addr)->sin_port = htons(port);
+	((struct sockaddr_in *) addr_res->ai_addr)->sin_port = htons(port);
 
 	// Print out the resolved IP address
 	if (addr_res->ai_addr->sa_family == AF_INET) {
@@ -209,7 +209,7 @@ static void web_poll() {
 		k_sleep(K_SECONDS(2));
 		if (http_connected) {
 			k_sem_take(&http_request_sem, K_FOREVER);
-			result = get_request("/state.txt");
+			result = get_request("/state");
 			if (result < 0) {
 				LOG_ERR("get_request() negative response code %d", result);
 			} 
