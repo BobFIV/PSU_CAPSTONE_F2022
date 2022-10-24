@@ -133,7 +133,7 @@ static int get_request(char* url) {
 			response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
 			if (response < 0) {
 				LOG_ERR("http_client_req returned %d !", response);
-				if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET) {
+				if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
 					close(http_socket);
 					http_connected = false;
 					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
