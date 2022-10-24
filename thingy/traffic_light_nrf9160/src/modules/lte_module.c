@@ -64,7 +64,7 @@ static enum lte_lc_lte_mode nw_mode_latest;
 const k_tid_t module_thread;
 
 /* Modem module message queue. */
-#define MODEM_QUEUE_ENTRY_COUNT		10
+#define MODEM_QUEUE_ENTRY_COUNT		24
 #define MODEM_QUEUE_BYTE_ALIGNMENT	4
 
 K_MSGQ_DEFINE(msgq_modem, sizeof(struct modem_msg_data),
@@ -659,7 +659,7 @@ static void module_thread_fn(void)
 	}
 }
 
-K_THREAD_DEFINE(modem_module_thread, 4096,
+K_THREAD_DEFINE(modem_module_thread, 6144,
 		module_thread_fn, NULL, NULL, NULL,
 		K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
 

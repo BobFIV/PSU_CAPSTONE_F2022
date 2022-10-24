@@ -162,12 +162,14 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				light2_state = AE_LIGHT_RED;
 				update_light_states();
 			}
+			send_command("!stop_scan;");
         }
 		else if (event->cmd == BLE_DISCONNECTED) {
 			ble_connected = false;
 			if (lte_connected) {
 				set_blue_led();
 			}
+			send_command("!start_scan;");
         }
 		else if (event->cmd == BLE_SCAN_STARTED) {
 			ble_scanning = true;

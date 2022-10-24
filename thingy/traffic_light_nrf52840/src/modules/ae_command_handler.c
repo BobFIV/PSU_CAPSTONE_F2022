@@ -137,8 +137,14 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 		// We got characters from the UART connection
         if (event->len > 0) {
-
+            printk("\nGot from 91: ");
             for (size_t i = 0; i < event->len; i++) {
+                printk("%c", event->buf[i]);
+            }
+            printk("\n");
+            
+            for (size_t i = 0; i < event->len; i++) {
+                printk(event->buf[i]);
                 if (!cmd_started && event->buf[i] == '!') {
                     // We found the start of a command
                     reset_parser();

@@ -12,6 +12,7 @@
 #define MODULE uart_handler
 #include <caf/events/module_state_event.h>
 #include "events/uart_data_event.h"
+#include "events/peer_conn_event.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
@@ -365,7 +366,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 					set_uart_power_state(i, false);
 				}
 
-				// We aren't using peer connection events to trigger this, this should always be up.
 				enable_uart_rx(0);
 				enable_uart_rx(1);
 			}
