@@ -10,6 +10,7 @@ project(traffic_light_ae)
 
 target_sources(app PRIVATE
   src/main.c
+  src/onem2m.c
 
   src/events/ble_event.c
   src/events/ae_event.c

@@ -15,6 +15,9 @@
 
 #include <cJSON.h>
 
+#include "deployment_settings.h"
+#include "modules/http_module.h"
+
 #define MODULE http_module
 #include <caf/events/module_state_event.h>
 #include "events/lte_event.h"
@@ -23,30 +26,32 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
-#define ENDPOINT_HOSTNAME "3.88.130.137"
-#define ENDPOINT_PORT 80
-
 #define HTTP_RX_BUF_SIZE 2048
 
-static int connect_socket(const char *hostname_str, int port, int *sock);
-static int perform_http_request();
+// Take this semaphore when making an HTTP request, and then give it back when done with the http_rx_buf data.
+// To take this semaphore: k_sem_take(&http_request_sem)
+// To give this semaphore back after you're done with your HTTP request + parsing: k_sem_give(&http_request_sem)
+// More info: https://docs.zephyrproject.org/3.1.0/kernel/services/synchronization/semaphores.html
+struct k_sem http_request_sem;
 
-bool http_connected = false;
+static bool http_connected = false;
 // String representation of the resolved IP address
+
 static char resolved_ip_addr[INET6_ADDRSTRLEN];
-// Buffer that we store the HTTP response in
-static char http_rx_buf[HTTP_RX_BUF_SIZE];
-// A pointer into http_rx_buf that marks the start of the response body (ie. after the headers)
-static char* http_rx_body_start = 0;
-// Number of bytes long that the HTTP response body is
-size_t http_content_length = 0;
-// Socket used to make http connection
-static int http_socket = -1;
 // HTTP timeout is 10 seconds
 static int32_t HTTP_REQUEST_TIMEOUT = 10 * MSEC_PER_SEC;
 
-// Take this semaphore when making an HTTP request, and then give it back when done with the http_rx_buf data.
-K_SEM_DEFINE(http_request_sem, 1, 1);
+// Buffer that we store the HTTP response in. Make sure you have the http_request_sem before accessing this.
+static char http_rx_buf[HTTP_RX_BUF_SIZE];
+
+// A pointer into http_rx_buf that marks the start of the response body (ie. after the headers)
+static char* http_rx_body_start = 0;
+
+// Number of bytes long that the HTTP response body is
+static size_t http_content_length = 0;
+
+// Socket used to make http connection
+static int http_socket = -1;
 
 // Define a heap for parsing and constructing JSON objects using cJSON
 K_HEAP_DEFINE(cjson_heap, 5120);
@@ -70,6 +75,16 @@ struct cJSON_Hooks cjson_mem_hooks = {
 	.malloc_fn = cjson_alloc,
 	.free_fn = cjson_free
 };
+
+char* get_http_rx_content() {
+	return http_rx_body_start;
+}
+
+size_t get_http_rx_content_length() {
+	return http_content_length;
+}
+
+static int connect_socket(const char *hostname_str, int port, int *sock);
 
 /* Gets and stores the respones from an HTTP request
 	This is taken from the zephyr http_client examples */
@@ -136,7 +151,7 @@ static int perform_http_request(struct http_request* req) {
 }
 
 // Returns the number of bytes in the response body, or a negative error value
-static int get_request(char* host, char* url) {
+int get_request(char* host, char* url) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
@@ -168,7 +183,7 @@ static int get_request(char* host, char* url) {
 		return perform_http_request(&req);
 }
 
-static int post_request(char* host, char* url, char* payload, size_t payload_size) {
+int post_request(char* host, char* url, char* payload, size_t payload_size) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
@@ -246,7 +261,9 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 static void web_poll() {
 	int result = 0;
 	while (true) {
+		
 		k_sleep(K_SECONDS(2));
+		// TODO: Add in code to poll the oneM2M polling channel
 		if (http_connected) {
 			k_sem_take(&http_request_sem, K_FOREVER);
 			result = get_request(ENDPOINT_HOSTNAME, "/state");
@@ -300,7 +317,11 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
 			LOG_INF("HTTP module setup");
+		    http_rx_body_start = NULL;
+		    http_content_length = 0;
+		    http_socket = -1;
 			cJSON_InitHooks(&cjson_mem_hooks);
+			k_sem_init(&http_request_sem, 1, 1);
 		}
 
 		return false;
@@ -319,6 +340,8 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			else {
 				LOG_INF("HTTP CONNECTED");
 				http_connected = true;
+
+				// TODO: Add in the oneM2M calls to setup the AE and polling channel.
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
