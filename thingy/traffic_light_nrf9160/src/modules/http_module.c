@@ -168,6 +168,40 @@ static int get_request(char* host, char* url) {
 		return perform_http_request(&req);
 }
 
+static int post_request(char* host, char* url, char* payload, size_t payload_size) {
+		// !!! WARNING !!!
+		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
+		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
+		//
+
+		if (!http_connected) {
+			LOG_WRN("Attempted to call push_request %s when http_connected is false!", url);
+			return -1;
+		}
+
+		// Clear out the response buffer
+		memset(&http_rx_buf, 0, HTTP_RX_BUF_SIZE);
+		// Create a new request
+		struct http_request req;
+		memset(&req, 0, sizeof(req));
+		req.method = HTTP_POST;
+		req.url = url;
+		req.host = host;
+		req.protocol = "HTTP/1.1";
+		req.response = response_cb;
+		req.payload = payload;
+		req.payload_len = payload_size;
+		req.recv_buf = &http_rx_buf[0];
+		req.recv_buf_len = HTTP_RX_BUF_SIZE;
+		const char *headers[] = {
+            "Keep-Alive: timeout=10, max=100\r\n",
+            NULL};
+		// TODO: Allow user to perform this function with additional custom header
+		req.header_fields = headers;
+
+		return perform_http_request(&req);
+}
+
 /* connects a socket to an HTTP addr:port/url
 	This is taken from the zephyr http_client examples */
 static int connect_socket(const char *hostname_str, int port, int *sock)
@@ -304,69 +338,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 	return false;
 }
-static int post_request(char* url, char* payload[HTTP_RX_BUF_SIZE]) {
-		// !!! WARNING !!!
-		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
-		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
-		//
-
-		if (!http_connected) {
-			LOG_WRN("Attempted to call push_request %s when http_connected is false!", url);
-			return -1;
-		}
-
-		// Clear out the response buffer
-		memset(&http_rx_buf, 0, sizeof(http_rx_buf));
-		// Create a new request
-		struct http_request req;
-		memset(&req, 0, sizeof(req));
-		req.method = HTTP_POST;
-		req.url = url;
-		req.host = ENDPOINT_HOSTNAME;
-		req.protocol = "HTTP/1.1";
-		req.response = response_cb;
-		req.payload = payload;
-		req.payload_len = sizeof(payload);
-		req.recv_buf = &http_rx_buf[0];
-		req.recv_buf_len = sizeof(http_rx_buf);
-
-		int retry_count = 0;
-		int response = 0;
-		bool ok = false;
-		while (retry_count < 3) {
-			response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
-			if (response < 0) {
-				LOG_ERR("http_client_req returned %d !", response);
-				if (response == -128) {
-					http_connected = false;
-					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
-					if (reconnect_response < 0) {
-						LOG_ERR("connect_socket() failed!");
-						return -2;
-					}
-					else {
-						LOG_INF("HTTP CONNECTED");
-						http_connected = true;
-					}
-				}
-				retry_count++;
-				continue;
-			}
-			else {
-				ok = true;
-				break;
-			}
-		}
-		if (!ok) {
-			LOG_ERR("Retried %d times, quitting request!", retry_count);
-			return -1;
-		}
-		return response;
-}
-
-
-
-
 
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
