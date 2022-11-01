@@ -1,5 +1,5 @@
 # ESP 32
-This module acts as a bluetooth server and simply reads in commands from it's bluetooth connection and translates those commands into GPIO instructions to our light module.
+This module acts as a Bluetooth Low Energy peripheral and simply reads in commands from it's BLE connection and translates those commands into GPIO instructions to our light module.
 
 Arduino IDE is needed to compile and transfer over to ESP32.
 
@@ -41,3 +41,24 @@ These pin asssignments can be changed by modifying the `r1Pin`, `y1Pin`, `g1Pin`
 
 The pinouts of the ESP32 microcontroller is shown below.
 ![pinout of ESP32 microcontroller](esp32_pinout.jpg)
+
+
+## Acknowledgements
+This source code contains code the iot-bus BLESerial repository located here: https://github.com/iot-bus/BLESerial
+
+That source code included in our code is subject to the Apache 2.0 license, with the following statement:
+```
+Copyright 2019 Ian Archbell / oddWires
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
