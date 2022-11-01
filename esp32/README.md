@@ -22,12 +22,20 @@ While uploading the program, you will have to press and hold the "Boot Button" o
 ![boot button circled on the ESP32](boot_button.png)
 
 ## Pinouts
-By default, the following pinouts are used:
-- Red LED, pin 23
-- Yellow LED, pin 22
-- Green LED, pin 21
+By default, the following pinouts are used:  
 
-This can be changed by modifying the `rPin`, `yPin`, and `gPin` variables located at the top of the `btControl.ino` file. 
+| *Light #* | *Color* | *ESP32 GPIO Pin #* | *ESP32 Physical Pin # |
+|-----------:|:-------|:-------------:|:-------------------------:|
+| 1 | Red    | GPIO23 | 37 |
+| 1 | Yellow | GPIO22 | 36 |
+| 1 | Green  | GPIO21 | 33 |
+| 2 | Red    | GPIO19 | 31 |
+| 2 | Yellow | GPIO18 | 30 |
+| 2 | Green  | GPIO5  | 29 |
+| 1 | GND    | N/A    | 14, 38, or 32 |
+| 2 | GND    | N/A    | 14, 38, or 32 |
+
+These pin asssignments can be changed by modifying the `r1Pin`, `y1Pin`, `g1Pin`, `r2pin`, `y2pin`, and `g2pin` variables located at the top of the `btControl.ino` file. 
 
 The pinouts of the ESP32 microcontroller is shown below.
 ![pinout of ESP32 microcontroller](esp32_pinout.jpg)
