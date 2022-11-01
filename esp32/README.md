@@ -4,9 +4,11 @@ This module acts as a bluetooth server and simply reads in commands from it's bl
 Arduino IDE is needed to compile and transfer over to ESP32.
 
 ## Arduino IDE Setup
-To program the ESP32, you will need to download the board packages for the ESP32. 
-To do this, open up your Arduino IDE and go to "File -> Preferences".
-In the settings tab, you will see a field named "Additional Boards Manager URLs", add this URL to the field: `https://dl.espressif.com/dl/package_esp32_index.json`. If you already have other URLs in that box, separate them by adding a comma between them.
+To program the ESP32, you will need to download the board packages for the ESP32.  
+To do this, open up your Arduino IDE and go to "File -> Preferences".  
+In the settings tab, you will see a field named "Additional Boards Manager URLs", add this URL to the field:   
+`https://dl.espressif.com/dl/package_esp32_index.json`.   
+If you already have other URLs in that box, separate them by adding a comma between them.  
 Once you have added this URL, press "OK" in the dialog box to apply the changes.
 
 ![screenshot of the window to enter the board URL into](arduino_ide_setup_instruction_urls.png)
