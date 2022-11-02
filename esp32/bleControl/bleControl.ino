@@ -12,12 +12,13 @@
 #define DEVICE_NAME "Intersection-1"
 
 //GPIO pins for our light control
+// Note: These are not physical pin numbers, these are GPIO pin numbers. Example: r1Pin is set to GPIO23, which is physical pin #37
 int r1Pin = 23;
 int y1Pin = 22;
 int g1Pin = 21;
-int r2Pin = 31;
-int y2Pin = 30;
-int g2Pin = 29;
+int r2Pin = 19;
+int y2Pin = 18;
+int g2Pin = 5;
 
 class BLESerial: public Stream
 {
