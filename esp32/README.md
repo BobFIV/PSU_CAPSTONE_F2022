@@ -20,7 +20,9 @@ Go to "Tools -> Board -> Boards Manager". Type in "esp32" in the search bar. Pre
 To program your device with this software, select the "Node32s" board type in "Tools -> Board -> ESP32 Arduino -> Node32s".  
 Select the correct COM/tty port in "Tools -> Port".  
 
-While uploading the program, you will have to press and hold the "Boot Button" on the ESP32. This button is located to the right of the micro USB connector, as circled in red in the image below.
+While uploading the program, you will have to press and hold the "Boot Button" on the ESP32.  
+This button is located to the right of the micro USB connector, as circled in red in the image below.  
+
 ![boot button circled on the ESP32](boot_button.png)
 
 ## Pinouts
