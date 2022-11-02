@@ -9,6 +9,16 @@
 #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
+#define DEVICE_NAME "Intersection-1"
+
+//GPIO pins for our light control
+int r1Pin = 23;
+int y1Pin = 22;
+int g1Pin = 21;
+int r2Pin = 31;
+int y2Pin = 30;
+int g2Pin = 29;
+
 class BLESerial: public Stream
 {
     public:
@@ -207,26 +217,27 @@ void BLESerial::end()
 //Instance of the class that handles bt communication
 BLESerial bt;
 
-//GPIO pins for our light control
-int rPin = 23;
-int yPin = 22;
-int gPin = 21;
-
 void setup() {
   
   Serial.begin(115200);
 
   // Set LED as output
-  pinMode(rPin, OUTPUT);
-  pinMode(gPin, OUTPUT);
-  pinMode(yPin, OUTPUT);
+  pinMode(r1Pin, OUTPUT);
+  pinMode(g1Pin, OUTPUT);
+  pinMode(y1Pin, OUTPUT);
+  pinMode(r2Pin, OUTPUT);
+  pinMode(g2Pin, OUTPUT);
+  pinMode(y2Pin, OUTPUT);
 
-  digitalWrite(rPin, LOW);
-  digitalWrite(yPin, LOW);
-  digitalWrite(gPin, HIGH);
+  digitalWrite(r1Pin, HIGH);
+  digitalWrite(y1Pin, LOW);
+  digitalWrite(g1Pin, LOW);
+  digitalWrite(r2Pin, HIGH);
+  digitalWrite(y2Pin, LOW);
+  digitalWrite(g2Pin, LOW);
   
   //Bluetooth device name
-  bt.begin("LightPost1");
+  bt.begin(DEVICE_NAME);
 
   Serial.println("Device started!");
 }
@@ -252,25 +263,45 @@ void loop() {
   }
 
   if(message == "red1") {
-    digitalWrite(rPin, HIGH);
-    digitalWrite(yPin, LOW);
-    digitalWrite(gPin, LOW);
+    digitalWrite(r1Pin, HIGH);
+    digitalWrite(y1Pin, LOW);
+    digitalWrite(g1Pin, LOW);
   } 
   else if (message == "green1") {   
-    digitalWrite(rPin, LOW);
-    digitalWrite(yPin, LOW);
-    digitalWrite(gPin, HIGH);
+    digitalWrite(r1Pin, LOW);
+    digitalWrite(y1Pin, LOW);
+    digitalWrite(g1Pin, HIGH);
   
   }
   else if (message == "yellow1") {
-    digitalWrite(rPin, LOW);
-    digitalWrite(yPin, HIGH);
-    digitalWrite(gPin, LOW);
+    digitalWrite(r1Pin, LOW);
+    digitalWrite(y1Pin, HIGH);
+    digitalWrite(g1Pin, LOW);
     
   } else if (message == "off1") {
-    digitalWrite(rPin, LOW);
-    digitalWrite(yPin, LOW);
-    digitalWrite(gPin, LOW);
+    digitalWrite(r1Pin, LOW);
+    digitalWrite(y1Pin, LOW);
+    digitalWrite(g1Pin, LOW);
+  }
+  else if(message == "red2") {
+    digitalWrite(r2Pin, HIGH);
+    digitalWrite(y2Pin, LOW);
+    digitalWrite(g2Pin, LOW);
+  } 
+  else if (message == "green2") {   
+    digitalWrite(r2Pin, LOW);
+    digitalWrite(y2Pin, LOW);
+    digitalWrite(g2Pin, HIGH);
+  }
+  else if (message == "yellow2") {
+    digitalWrite(r2Pin, LOW);
+    digitalWrite(y2Pin, HIGH);
+    digitalWrite(g2Pin, LOW);
+    
+  } else if (message == "off2") {
+    digitalWrite(r2Pin, LOW);
+    digitalWrite(y2Pin, LOW);
+    digitalWrite(g2Pin, LOW);
   }
   delay(20);
 }
