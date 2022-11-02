@@ -17,15 +17,16 @@ The code and instructions can be found in the [traffic-light-dashboard](traffic-
 The code and instructions for programming the Thingy:91 are located in the [thingy](thingy) folder.
 
 ## ESP32
-The code and instructions for programming the ESP21 are located in the [esp32](esp32) folder.
+The code and instructions for programming the ESP32 are located in the [esp32](esp32) folder.
 
 ## oneM2M CSE
 The oneM2M standard requires a oneM2M network to contain a Common Services Entity (CSE).  
 This CSE provides many different features, but in our case is considered as the database for our application.  
 
-Our project uses the [ACME CSE](https://github.com/ankraft/ACME-oneM2M-CSE) developed by Andreas Kraft and other contributors.  
+Our project uses the [ACME CSE](https://github.com/ankraft/ACME-oneM2M-CSE), which is developed by Andreas Kraft and other contributors.  
 
 ## Thanks
-We would like to thank the sponsor for this project, [Exacta Global Smart Solutions](http://exactagss.com/). Exacta GSS is a leading edge consultant for oneM2M IoT projects.
+We would like to thank the sponsor for this project, [Exacta Global Smart Solutions](http://exactagss.com/).  
+Exacta GSS is a leading edge consultant for oneM2M IoT projects.
 
-We would also like to thank [Nordic Semicondictor](https://www.nordicsemi.com/) for their support while developing on the Thingy:91 prototyping platform.  
+We would also like to thank [Nordic Semicondictor](https://www.nordicsemi.com/) for their support while developing on their Thingy:91 prototyping platform.  
