@@ -1,0 +1,40 @@
+[ 
+    {
+        "type": "traffic:trfint",
+        "lname": "trafficLightIntersection",
+        "cnd": "edu.psu.cse.traffic.trafficLightIntersection",
+        
+        "attributes": [
+            {
+                "sname":"id",
+                "lname": "identifier",
+                "type":"string",
+                "car":"1"
+           },
+           {
+                "sname":"l1s",
+                "lname": "light1State",
+                "type":"string",
+                "car":"1"
+           },
+           {
+                "sname":"l2s",
+                "lname": "light2State",
+                "type":"string",
+                "car":"1"
+           },
+           {
+                "sname":"l1sn",
+                "lname": "light1SerialNumber",
+                "type":"string",
+                "car":"1"
+           },
+           {
+                "sname":"l2sn",
+                "lname": "light2SerialNumber",
+                "type":"string",
+                "car":"1"
+           }
+        ]
+    }
+]
