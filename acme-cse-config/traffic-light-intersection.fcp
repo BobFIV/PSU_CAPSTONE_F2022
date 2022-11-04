@@ -5,12 +5,6 @@
         "cnd": "edu.psu.cse.traffic.trafficLightIntersection",
         
         "attributes": [
-            {
-                "sname":"id",
-                "lname": "identifier",
-                "type":"string",
-                "car":"1"
-           },
            {
                 "sname":"bts",
                 "lname": "bluetoothState",
