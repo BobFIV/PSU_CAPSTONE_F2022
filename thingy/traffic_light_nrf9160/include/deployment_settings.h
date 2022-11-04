@@ -8,7 +8,10 @@
 */
 
 // Location and port of the oneM2M CSE
-#define ENDPOINT_HOSTNAME "3.88.130.137"
-#define ENDPOINT_PORT 80
+#define ENDPOINT_HOSTNAME "34.238.135.110"
+#define ENDPOINT_PORT 8080
+
+// Originator name
+#define M2M_ORIGINATOR "Cthingy91A"
 
 #endif
