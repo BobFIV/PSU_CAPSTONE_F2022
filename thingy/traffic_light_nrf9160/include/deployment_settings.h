@@ -12,6 +12,7 @@
 #define ENDPOINT_PORT 8080
 
 // Originator name
-#define M2M_ORIGINATOR "Cthingy91A"
+#define DEVICE_LETTER  "A"
+#define M2M_ORIGINATOR "Cthingy91" DEVICE_LETTER
 
 #endif

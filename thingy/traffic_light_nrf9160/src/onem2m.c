@@ -15,11 +15,6 @@ LOG_MODULE_REGISTER(oneM2M, LOG_LEVEL_INF);
 #define ACPI_LENGTH 40
 char acpi[ACPI_LENGTH];
 
-//
-// These are just function stubs based off the code here: https://github.com/BobFIV/PSU_CAPSTONE_F2021/blob/main/sensor_oneM2M/src/main.c
-// Feel free to change these however you see fit. I am placing them here just to show the structure of the code/files.
-//
-
 void init_oneM2M() {
     // Call this at startup
     memset(acpi, 0, ACPI_LENGTH);
@@ -27,7 +22,6 @@ void init_oneM2M() {
 
 void createACP() {
     /// @brief Attempts to create an ACP on the CSE
-    /// @param acpi resourceID of the created ACP
 
     LOG_INF("Creating ACP");
     
