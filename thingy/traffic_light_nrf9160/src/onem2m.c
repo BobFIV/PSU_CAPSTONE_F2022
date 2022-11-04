@@ -14,7 +14,50 @@
 // Feel free to change these however you see fit. I am placing them here just to show the structure of the code/files.
 //
 
-char* createACP(char *parentID, char *acpi) {
+char* createACP() {
+    printk("Creating ACP");
+    
+    //create headers needed for the creation of ACP
+    const char* headers[] = {
+        "Content-Type: application/json;ty=1\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    //Create the payload to send to the ACME server
+    char payload[] = "{\
+        \"m2m:acp\": { \
+            \"rn\": \"trafficACP\",\
+            \"pv\": {\
+                \"acr\": [\
+                    {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91A\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91B\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91C\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91D\"], \"acop\": 63}\
+                ]\
+            },\
+            \"pvs\": {\
+                \"acr\": [\
+                    {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91A\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91B\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91C\"], \"acop\": 63},\
+                    {\"acor\": [\"Cthingy91D\"], \"acop\": 63}\
+                ]\
+            }\
+        }\
+    }";
+
+
+    printk("ACP Create Payload: %s\r\n", payload);
+    
+    //make post request
+    post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
+    
+
     return NULL;
 }
 

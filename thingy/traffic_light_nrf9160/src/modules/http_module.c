@@ -103,6 +103,8 @@ static void response_cb(struct http_response *rsp,
 		if (rsp->body_found) {
 			http_rx_body_start = rsp->body_frag_start;
 			http_content_length = rsp->body_frag_len;
+			printk("\n%s\n", http_rx_body_start);
+
 		}
 		else {
 			LOG_WRN("No content returned from HTTP request!");
@@ -118,7 +120,7 @@ static int perform_http_request(struct http_request* req) {
 	int response = 0;
 	bool ok = false;
 	while (retry_count < 3) {
-		response = http_client_req(http_socket, &req, HTTP_REQUEST_TIMEOUT, NULL);
+		response = http_client_req(http_socket, req, HTTP_REQUEST_TIMEOUT, NULL);
 		if (response < 0) {
 			LOG_ERR("http_client_req returned %d !", response);
 			if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
@@ -183,7 +185,7 @@ int get_request(char* host, char* url) {
 		return perform_http_request(&req);
 }
 
-int post_request(char* host, char* url, char* payload, size_t payload_size) {
+int post_request(char* host, char* url, char* payload, size_t payload_size, const char* headers) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
@@ -208,9 +210,6 @@ int post_request(char* host, char* url, char* payload, size_t payload_size) {
 		req.payload_len = payload_size;
 		req.recv_buf = &http_rx_buf[0];
 		req.recv_buf_len = HTTP_RX_BUF_SIZE;
-		const char *headers[] = {
-            "Keep-Alive: timeout=10, max=100\r\n",
-            NULL};
 		// TODO: Allow user to perform this function with additional custom header
 		req.header_fields = headers;
 
@@ -260,7 +259,7 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 
 static void web_poll() {
 	int result = 0;
-	while (true) {
+	while (false) {
 		
 		k_sleep(K_SECONDS(2));
 		// TODO: Add in code to poll the oneM2M polling channel
@@ -342,6 +341,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				http_connected = true;
 
 				// TODO: Add in the oneM2M calls to setup the AE and polling channel.
+				createACP();
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {

@@ -15,7 +15,7 @@ int get_request(char* host, char* url);
 // @param url - String representing the URL path (ie. /index.html)
 // @param payload - Payload to put in the POST request
 // @param payload_size - Length of the payload in bytes
-int post_request(char* host, char* url, char* payload, size_t payload_size);
+int post_request(char* host, char* url, char* payload, size_t payload_size, const char* headers);
 
 char* get_http_rx_content();
 size_t get_http_rx_content_length();

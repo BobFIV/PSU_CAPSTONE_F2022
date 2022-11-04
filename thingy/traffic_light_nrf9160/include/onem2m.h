@@ -6,7 +6,7 @@
 // Feel free to change these however you see fit. I am placing them here just to show the structure of the code/files.
 //
 
-char * createACP(char *parentID, char *acpi);
+char* createACP();
 char* createAE(char* resourceName, char* acpi);
 char* retrieveAE(char* resourceName);
 int deleteAE(char* resourceName);
