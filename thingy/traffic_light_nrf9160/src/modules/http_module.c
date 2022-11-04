@@ -84,6 +84,14 @@ size_t get_http_rx_content_length() {
 	return http_content_length;
 }
 
+void take_http_sem() {
+	k_sem_take(&http_request_sem, K_FOREVER);
+}
+
+void give_http_sem() {
+	k_sem_give(&http_request_sem);
+}
+
 static int connect_socket(const char *hostname_str, int port, int *sock);
 
 /* Gets and stores the respones from an HTTP request
@@ -153,7 +161,7 @@ static int perform_http_request(struct http_request* req) {
 }
 
 // Returns the number of bytes in the response body, or a negative error value
-int get_request(char* host, char* url) {
+int get_request(char* host, char* url, const char** headers) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
@@ -176,16 +184,12 @@ int get_request(char* host, char* url) {
 		req.response = response_cb;
 		req.recv_buf = &http_rx_buf[0];
 		req.recv_buf_len = HTTP_RX_BUF_SIZE;
-		const char *headers[] = {
-            "Keep-Alive: timeout=10, max=100\r\n",
-            NULL};
-		// TODO: Allow user to perform this function with additional custom header
 		req.header_fields = headers;
 
 		return perform_http_request(&req);
 }
 
-int post_request(char* host, char* url, char* payload, size_t payload_size, const char* headers) {
+int post_request(char* host, char* url, char* payload, size_t payload_size, const char** headers) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
@@ -210,11 +214,32 @@ int post_request(char* host, char* url, char* payload, size_t payload_size, cons
 		req.payload_len = payload_size;
 		req.recv_buf = &http_rx_buf[0];
 		req.recv_buf_len = HTTP_RX_BUF_SIZE;
-		// TODO: Allow user to perform this function with additional custom header
 		req.header_fields = headers;
 
 		return perform_http_request(&req);
 }
+
+cJSON* parse_json_response() {
+	// Only call this if you have already acquired the http_rx_sem
+	// Once you are done manipulating the JSON, call free_json_response
+	cJSON *parsed_json = cJSON_ParseWithLength(http_rx_body_start, http_content_length);
+	if (parsed_json == NULL)
+	{
+		LOG_ERR("Failed to parse JSON from HTTP response!\nRESPONSE START\n%s\nRESPONSE END", http_rx_body_start);
+		const char *error_ptr = cJSON_GetErrorPtr();
+		if (error_ptr != NULL)
+		{
+			LOG_ERR("Error before: %s\n", error_ptr);
+		}
+	}
+	return parsed_json;
+}
+
+void free_json_response(cJSON* parsed_json) {
+	//
+	cJSON_Delete(parsed_json);
+}
+
 
 /* connects a socket to an HTTP addr:port/url
 	This is taken from the zephyr http_client examples */
@@ -260,49 +285,9 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 static void web_poll() {
 	int result = 0;
 	while (false) {
-		
-		k_sleep(K_SECONDS(2));
-		// TODO: Add in code to poll the oneM2M polling channel
+		k_sleep(K_SECONDS(1));
 		if (http_connected) {
-			k_sem_take(&http_request_sem, K_FOREVER);
-			result = get_request(ENDPOINT_HOSTNAME, "/state");
-			if (result < 0) {
-				LOG_ERR("get_request() negative response code %d", result);
-			} 
-			if (result == 0) {
-				// Sometimes we will get an empty response body because the state is unchanged + the apache server is using E-Tags for caching
-				LOG_WRN("Empty response body.");
-			}
-			else {
-				
-				cJSON *parsed_json = cJSON_ParseWithLength(http_rx_body_start, http_content_length);
-				if (parsed_json == NULL)
-				{
-					LOG_ERR("Failed to parse light state from HTTP response!\nRESPONSE START\n%s\nRESPONSE END", http_rx_body_start);
-					const char *error_ptr = cJSON_GetErrorPtr();
-					if (error_ptr != NULL)
-					{
-						LOG_ERR("Error before: %s\n", error_ptr);
-					}
-				}
-				else {
-					const cJSON* light1_json = cJSON_GetObjectItemCaseSensitive(parsed_json, "light1");
-					if (cJSON_IsString(light1_json) && (light1_json->valuestring != NULL))
-					{
-						struct ae_event* light_event = new_ae_event();
-						light_event->cmd = AE_EVENT_LIGHT_CMD;
-						light_event->target_light = AE_LIGHT1;
-						light_event->new_light_state = string_to_light_state(light1_json->valuestring, 10);
-						APP_EVENT_SUBMIT(light_event);
-					}
-					else {
-						LOG_ERR("Failed to parse \"light1\" JSON field!");
-					}
-				}
-
-				cJSON_Delete(parsed_json);
-			}
-			k_sem_give(&http_request_sem);
+			// TODO: Add in code to poll the oneM2M polling channel
 		}
 	}
 }
@@ -321,6 +306,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		    http_socket = -1;
 			cJSON_InitHooks(&cjson_mem_hooks);
 			k_sem_init(&http_request_sem, 1, 1);
+			init_oneM2M();
 		}
 
 		return false;

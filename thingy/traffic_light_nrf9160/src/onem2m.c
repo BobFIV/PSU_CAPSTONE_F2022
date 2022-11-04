@@ -1,21 +1,35 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/kernel.h>
 
 #include <cJSON.h>
-
 
 #include "onem2m.h"
 #include "deployment_settings.h"
 #include "modules/http_module.h"
+
+LOG_MODULE_REGISTER(oneM2M, LOG_LEVEL_INF);
+
+// Global Variables
+#define ACPI_LENGTH 40
+char acpi[ACPI_LENGTH];
 
 //
 // These are just function stubs based off the code here: https://github.com/BobFIV/PSU_CAPSTONE_F2021/blob/main/sensor_oneM2M/src/main.c
 // Feel free to change these however you see fit. I am placing them here just to show the structure of the code/files.
 //
 
-char* createACP() {
-    printk("Creating ACP");
+void init_oneM2M() {
+    // Call this at startup
+    memset(acpi, 0, ACPI_LENGTH);
+}
+
+void createACP() {
+    /// @brief Attempts to create an ACP on the CSE
+    /// @param acpi resourceID of the created ACP
+
+    LOG_INF("Creating ACP");
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
@@ -45,10 +59,39 @@ char* createACP() {
         }\
     }";
     
-    //make post request
-    post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
+    // make post request
+    take_http_sem();
+    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to create ACP!");
+        give_http_sem();
+        return;
+    }
 
-    return NULL;
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* acp = cJSON_GetObjectItemCaseSensitive(j, "m2m:acp");
+        if (cJSON_IsObject(acp))
+        {
+            const cJSON* ri = cJSON_GetObjectItemCaseSensitive(acp, "ri");
+            if (cJSON_IsString(ri) && (ri->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(acpi, ri->valuestring, ACPI_LENGTH);
+                LOG_INF("Created ACP, acpi=%s", acpi);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_ERR("Failed to find \"m2m:acp\" JSON field!");
+        }
+        
+    }
+    free_json_response(j);
+
+    give_http_sem();
 }
 
 char* createAE(char* resourceName, char* acpi) {
@@ -60,7 +103,7 @@ char* retrieveAE(char* resourceName) {
 }
 
 int deleteAE(char* resourceName) {
-    return NULL;
+    return 0;
 }
 
 char* createContainer(char* resourceName, char* parentID, int mni, char* acpi) {
