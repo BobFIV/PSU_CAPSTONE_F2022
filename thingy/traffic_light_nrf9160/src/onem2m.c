@@ -29,34 +29,24 @@ char* createACP() {
     //Create the payload to send to the ACME server
     char payload[] = "{\
         \"m2m:acp\": { \
-            \"rn\": \"trafficACP\",\
+            \"rn\": \"" M2M_ORIGINATOR "-ACP\",\
             \"pv\": {\
                 \"acr\": [\
                     {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91A\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91B\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91C\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91D\"], \"acop\": 63}\
+                    {\"acor\": [\"" M2M_ORIGINATOR "\"], \"acop\": 63}\
                 ]\
             },\
             \"pvs\": {\
                 \"acr\": [\
                     {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91A\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91B\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91C\"], \"acop\": 63},\
-                    {\"acor\": [\"Cthingy91D\"], \"acop\": 63}\
+                    {\"acor\": [\"" M2M_ORIGINATOR "\"], \"acop\": 63}\
                 ]\
             }\
         }\
     }";
-
-
-    printk("ACP Create Payload: %s\r\n", payload);
     
     //make post request
     post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
-    
 
     return NULL;
 }
