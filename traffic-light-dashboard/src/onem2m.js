@@ -39,6 +39,19 @@ var response_type_enum = {
     NO_RESPONSE: 5
 };
 
+var filter_usage_enum = {
+    // TS-0004, Section 6.3.4.2.31-1 m2m:filterUsage
+    DISCOVERY: 1,
+    CONDITIONAL: 2,
+    ON_DEMAND: 3
+};
+
+var desired_id_response_type = {
+    // TS-0004: Section 6.3.4.2.8-1 m2m:desIdResType
+    STRUCTURED: 1,
+    UNSTRUCTURED: 2
+};
+
 function create_random_identifier() {
     // WARNING: This is not a secure PRNG! 
     return btoa(Math.floor(Math.random()*10000000000));
@@ -51,19 +64,69 @@ class Resource {
         this.resource_id = resource_id === null ? resource_name + create_random_identifier() : resource_id;
         this.resource_name = resource_name;
         this.parent_id = parent_id;
+        console.log("Resource constructor: ");
+        console.log(this);
     }
 }
 
 class CSE_Connection extends Resource {
     // Represents both a CSE, and manages the connection to the CSE
-    constructor(identifier, originator) {
-        super(resource_type_enum.CSE, identifier, "cse-in", "");
-        this.client = axios.create({
-            headers: {
-                "X-M2M-Origin": originator
-            }
-        });
+    constructor() {
+        console.log("CSE_Connection constructor1");
+        super(resource_type_enum.CSE, "", "cse-in", "");
+        console.log("CSE_Connection constructor2");
+        this.connected = false;
+        this.connect = this.connect.bind(this);
+        this.disconnect = this.disconnect.bind(this);
+    }
+
+    connect(url, originator, base_ri) {
+        this.url = url;
         this.originator = originator;
+        this.resource_id = base_ri;
+
+        axios({
+            method: "get",
+            headers: {
+                "Origin": this.originator,
+                "X-M2M-Origin": this.originator,
+                "X-M2M-RI": create_random_identifier(),
+                "X-M2M-RVI": "3"
+            },
+            responseType: "json",
+            baseURL: this.url,
+            url: this.resource_id,
+            params: {
+                fu: filter_usage_enum.DISCOVERY,
+                drt: desired_id_response_type.UNSTRUCTURED
+            }
+        }).then((response) => {
+            console.log(response);
+            this.connected = true;
+        }).catch((error) => {
+            console.err("Error while discovering CSE!");
+            console.err(error);
+            this.connected = false;
+        });
+    }
+
+    disconnect() {
+        this.connected = false;
+    }
+
+    discoverAEs() {
+        
+    }
+
+    retreiveResource(resource) {
+        axios({
+            method: "get",
+            url: this.url + "/" + this.base_ri + "/"
+        });
+    }
+
+    createResource(resource) {
+        
     }
 };
 
@@ -83,16 +146,12 @@ class AE extends Resource {
         this.app_identifier = app_identifier;    // api
         this.acp_ids = acp_ids;                  // acpi
         this.supported_release_versions = [ 3 ]; // srv
-        console.log(this);
     }
 };
 
-class Container extends Resource {
+class FlexContainer extends Resource {
     
 };
 
-class FlexContainer extends Resource {
-
-};
-
-export { ACP, AE, FlexContainer, Container };
+export { CSE_Connection, ACP, AE, FlexContainer };
+export default Resource;
