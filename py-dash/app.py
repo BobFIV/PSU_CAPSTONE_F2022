@@ -1,18 +1,5 @@
 #############################################
-# Team PJ3C Capstone Dashboard
-# Author: Abdulrahman Alfares
-# Developed & Tested with Python v3.8.10
-# and ACME v0.9.1
-#
-# Inspired by the Dash Plotly example dashboard:
-# https://github.com/plotly/dash-sample-apps/tree/main/apps/dash-manufacture-spc-dashboard
-#
-# Reference the dash documentation (https://dash.plotly.com/) 
-# to learn about how the layout and callbacks work
-#
-# Note: Default app layout looks best on a 24" 1080p screen browser on fullscreen mode
-# or a browser on a smartphone device
-#
+# Team PJ5C Capstone Dashboard
 
 import logging
 import dash
@@ -54,11 +41,10 @@ cseName = parser.get('CONFIG_DATA', 'cseName')
 
 #### Dash App IP & Port ####
 ip = dashHost
-port = 8050
+port = appPort
 
 ### AE-ID for this device ###
 originator = 'C'+appName
-
 
 # Hold sensor and actuator data 
 sensors = []
@@ -128,7 +114,7 @@ app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
 )
-app.title = "Irrigation System Dashboard"
+app.title = "Smart City Dashboard"
 
 app.config["suppress_callback_exceptions"] = True
 
@@ -1723,6 +1709,6 @@ if __name__ == "__main__":
     obtainAllAEs()
     
     # Run dashboard app
-    app.run_server(debug=False, host = ip,  port=8050, use_reloader=False)
+    app.run_server(debug=False, host = ip,  port=port, use_reloader=False)
 
 
