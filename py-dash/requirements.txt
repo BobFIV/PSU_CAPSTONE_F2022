@@ -1,0 +1,4 @@
+pandas
+dash
+dash_daq
+plotly
