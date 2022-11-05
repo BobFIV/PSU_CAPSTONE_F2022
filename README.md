@@ -17,8 +17,9 @@ The code and instructions for programming the ESP32 are located in the [esp32](e
 
 
 ## Web Dashboard
-A simple React JS single page web app has be created for controlling and viewing the state of the traffic lights.
-The code and instructions can be found in the [traffic-light-dashboard](traffic-light-dashboard) folder.
+There is a simple Python Dash web dashboard located in the [py-dash](py-dash) folder.
+To install the dependencies: `pip install -r py-dash/requirements.txt`
+To launch: `python -m py-dash.__init__ --config py-dash/dashCfg.cfg`
 
 We deploy this code onto an AWS EC2 instance with firewall rules setup to allow HTTP traffic through port 80.  
 This allows users to view and control the traffic lights from any device with any modern web browser and internet connection.  
