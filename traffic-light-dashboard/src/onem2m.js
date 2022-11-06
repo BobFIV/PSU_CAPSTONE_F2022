@@ -1,80 +1,14 @@
 import axios from "axios";
-
-var resource_type_enum = {
-    // Taken from TS-0004, Section 6.3.4.2.1 m2m:resourceType
-    // Note: This is incomplete
-    ACCESS_CONTROL_POLICY: 1, // ACP
-    APPLICATION_ENTITY: 2,    // AE
-    CONTAINER: 3,             // CNT
-    CONTENT_INSTANCE: 4,
-    CSE_BASE: 5,
-    GROUP: 9,
-    NODE: 14,
-    POLLING_CHANNEL: 15,
-    FLEX_CONTAINER: 28
-};
-
-var RESOURCE_TYPES = {
-    "m2m:acp": 1,
-    "m2m:ae": 2,
-    "m2m:cnt": 3,
-    "m2m:cb": 5,
-    "m2m:grp": 9,
-    "m2m:nod": 14,
-    "m2m:sub": 23,
-    "m2m:flex_container": 28 // NOTE: This is not the true string representation!
-};
-
-var cse_type_enum = {
-    // TS-0004, Section 6.3.4.2.2 m2m:cseTypeID
-    IN_CSE: 1,
-    MN_CSE: 2,
-    ASN_CSE: 3
-};
-
-var operation_enum = {
-    // TS-0004, Section 6.3.4.2.5 m2m:operation
-    CREATE: 1,
-    RETRIEVE: 2,
-    UPDATE: 3,
-    DELETE: 4,
-    NOTIFY: 5
-};
-
-var response_type_enum = {
-    // TS-0004, Section 6.3.4.2.6 m2m:responseType
-    NONBLOCKING_SYNC: 1,
-    NONBLOCKING_ASYNC: 2,
-    BLOCKING: 3,
-    FLEX_BLOCKING: 4,
-    NO_RESPONSE: 5
-};
-
-var filter_usage_enum = {
-    // TS-0004, Section 6.3.4.2.31-1 m2m:filterUsage
-    DISCOVERY: 1,
-    CONDITIONAL: 2,
-    ON_DEMAND: 3
-};
-
-var desired_id_response_type = {
-    // TS-0004: Section 6.3.4.2.8-1 m2m:desIdResType
-    STRUCTURED: 1,
-    UNSTRUCTURED: 2
-};
-
-function create_random_identifier() {
-    // WARNING: This is not a secure PRNG! 
-    return btoa(Math.floor(Math.random()*10000000000));
-}
+import { RESOURCE_TYPES, create_random_identifier } from "./onem2m_constants.js";
+import { filterUsage, discResType } from "./onem2m_enums.js";
 
 export class Resource {
-    constructor(resource_type, resource_id) {
+    constructor(resource_type, resource_id, resource_name) {
         // Based off of the Universal Attributes from: TS-0004, Section 9.6.1.3.1
         this.resource_type = resource_type;
         this.resource_type_enum = RESOURCE_TYPES[this.resource_type];
         this.resource_id = resource_id === null ? create_random_identifier() : resource_id;
-        this.resource_name = "";
+        this.resource_name = resource_name === null ? undefined : resource_name;
         this.parent_id = "";
         this.last_modified_time = "";
         this.creation_time = "";        
@@ -83,12 +17,36 @@ export class Resource {
         this.retrieve = this.retrieve.bind(this);
         this.create = this.create.bind(this);
         this.update = this.update.bind(this);
+        this._resource_refresh_from_response = this._resource_refresh_from_response.bind(this);
+        this._resource_to_request = this._resource_to_request.bind(this);
+    }
+
+    _resource_refresh_from_response(response) {
+        response = response.data[this.resource_type];
+        this.last_modified_time = response.lt;
+        this.creation_time = response.ct;
+        this.expiration_time = response.et;
+        this.resource_name = response.rn;
+        this.resource_id = response.ri;
+        this.parent_id = response.pi;
+        return response;
+    }
+
+    _resource_to_request(payload, update) {
+        payload = payload || {};
+        update = update || false; // Set update to false if not specified
+        if (!update && this.resource_name) {
+            payload.rn = this.resource_name;
+        }
+        let wrapped = {};
+        wrapped[this.resource_type] = payload;
+        return wrapped;
     }
     
     static discover(connection, filters) {
         let get_params = {
-                fu: filter_usage_enum.DISCOVERY,
-                drt: desired_id_response_type.STRUCTURED,
+                fu: filterUsage.DISCOVERY,
+                drt: discResType.STRUCTURED,
         };
 
         // Apply extra filters if there are any
@@ -126,21 +84,15 @@ export class Resource {
             responseType: "json",
             baseURL: connection.url,
             url: this.resource_id
-        }).then((response) => {
-            response = response.data[this.resource_type];
-            this.last_modified_time = response.lt;
-            this.creation_time = response.ct;
-            this.expiration_time = response.et;
-            this.resource_name = response.rn;
-            this.parent_id = response.pi;
-            return response;
-        }).catch((error) => {
+        }).then((response) => 
+            this._resource_refresh_from_response(response)
+        ).catch((error) => {
             console.error("Error while retrieving resource: " + this.resource_id);
             throw error;
         });
     }
 
-    create(connection) {
+    create(connection, payload) {
         return axios({
             method: "post",
             headers: {
@@ -151,24 +103,17 @@ export class Resource {
             },
             responseType: "json",
             baseURL: connection.url,
-            url: this.resource_id
-        }).then((response) => {
-            response = response.data[this.resource_type];
-            this.last_modified_time = response.lt;
-            this.creation_time = response.ct;
-            this.expiration_time = response.et;
-            this.resource_name = response.rn;
-            this.parent_id = response.pi;
-            return response;
-        }).catch((error) => {
+            url: this.parent_id,
+            data: this._resource_to_request(payload, false)
+        }).then((response) => 
+            this._resource_refresh_from_response(response)
+        ).catch((error) => {
             console.error("Error while creating resource: " + this.resource_id);
             throw error;
         });
     }
     
     update(connection, new_state) {
-        let wrapped_new_state = {};
-        wrapped_new_state[this.resource_type] = new_state;
         return axios({
             method: "put",
             headers: {
@@ -179,10 +124,10 @@ export class Resource {
             responseType: "json",
             baseURL: connection.url,
             url: this.resource_id,
-            data: wrapped_new_state
-        }).then((response) => {
-            return response.data[this.resource_type];
-        }).catch((error) => {
+            data: this._resource_to_request(new_state, true)
+        }).then((response) => 
+            this._resource_refresh_from_response(response)
+        ).catch((error) => {
             console.error("Error while updating resource: " + this.resource_id);
             throw error;
         });
@@ -192,7 +137,7 @@ export class Resource {
 export class CSE_Connection extends Resource {
     // Represents both a CSE, and manages the connection to the CSE
     constructor() {
-        super("m2m:cb", "cse-in");
+        super("m2m:cb", "cse-in", null);
         this.connected = false;
         this.connect = this.connect.bind(this);
         this.disconnect = this.disconnect.bind(this);
@@ -213,28 +158,143 @@ export class CSE_Connection extends Resource {
     }
 };
 
-export class ACP extends Resource {
-    constructor(acp_name, acp_identifier) {
-        var id = acp_identifier === undefined ? null : acp_identifier;
-        super("m2m:acp", id, acp_name);
-        console.log(this);
+export class ACR {
+    constructor(operation, originators) {
+        this.operation = operation;
+        this.originators = originators;
+        this.to_request = this.to_request.bind(this);
     }
 
+    static from_response(response) {
+       return new ACR(response.acop, response.acor);
+    }
+
+    to_request() {
+        return { acop: this.operation, acor: this.originators };
+    }
+}
+
+export class ACP extends Resource {
+    constructor(acp_identifier, acp_name) {
+        super("m2m:acp", acp_identifier, acp_name);
+        this.privileges = [];
+        this.self_privileges = [];
+
+        this.create = this.create.bind(this);
+        this.update = this.update.bind(this);
+        this.retrieve = this.retrieve.bind(this);
+        this._refresh_from_response = this._refresh_from_response.bind(this);
+        this._to_request = this._to_request.bind(this);
+    }
+
+    static discover(connection, filters) {
+        filters = filters || {};
+        return super.discover(connection, 
+            Object.assign({}, {ty: RESOURCE_TYPES["m2m:acp"]}, filters));
+    }
+
+    _refresh_from_response(response) {
+        let pv_list = [];
+        let pvs_list = [];
+        for (let p  = 0; p < response.pv.acr.length; p++) {
+            pv_list.push(ACR.from_response(response.pv.acr[p]));
+        }
+        for (let p  = 0; p < response.pvs.acr.length; p++) {
+            pvs_list.push(ACR.from_response(response.pvs.acr[p]));
+        }
+        this.privileges = pv_list;
+        this.self_privileges = pvs_list;
+        return response; 
+    }
+
+    _to_request() {
+        let pv_list = [];
+        let pvs_list = [];
+        for (let p = 0; p < this.privileges.length; p++) {
+            pv_list.push(this.self_privileges[p].to_request());
+        }
+        for (let p = 0; p < this.self_privileges.length; p++) {
+            pvs_list.push(this.self_privileges[p].to_request());
+        }
+            
+        return { 
+                pv: { acr: pv_list },
+                pvs: { acr: pvs_list }
+        };
+    }
+
+    create(connection) {
+        return super.create(connection, this._to_request());
+    }
+    
+    retrieve(connection) {
+        return super.retrieve(connection).then((response) => { console.log(response); this._refresh_from_response(response)});
+    }
+
+    update(connection) {
+        return super.update(connection, this._to_request()).then((response) => this._refresh_from_response(response));
+    }
 };
 
 export class AE extends Resource {
-    constructor(ae_identifier) {
-        super("m2m:ae", ae_identifier);
+    constructor(ae_identifier, ae_name) {
+        super("m2m:ae", ae_identifier, ae_name);
+        this.point_of_access = [];               // poa
         this.ae_identifier = ae_identifier;      // aei
         this.app_identifier = "";                // api
         this.acp_ids = [];                       // acpi
+        this.remote_reachable = false;           // rr   
+        this.supported_release_versions = [ "3" ]; // srv
+ 
+        this.retrieve = this.retrieve.bind(this);
+        this.create = this.create.bind(this);
+        this.update = this.update.bind(this);
+        this._refresh_from_response = this._refresh_from_response.bind(this);
+        this._to_request = this._to_request.bind(this);
+    }
+
+    static discover(connection, filters) {
+        filters = filters || {};
+        return super.discover(connection, 
+            Object.assign({}, filters, {ty: RESOURCE_TYPES["m2m:ae"]}));
+    }
+
+    _refresh_from_response(response) {
+        this.acp_ids = response.acpi;
+        this.ae_identifier = response.aei;
+        this.app_identifier = response.api;
+        this.point_of_access = response.poa;
+        this.remote_reachable = response.rr;
+        this.supported_release_versions = response.srv;
+        return response;
+    }
+        
+    _to_request () {
+        return { 
+            poa: this.point_of_access,
+            acpi: this.acp_ids,
+            api: this.app_identifier,
+            rr: this.remote_reachable,
+            srv: this.supported_release_versions
+        };
+    }
+
+    create(connection) {
+        return super.create(connection, this._to_request()).then((response) => this._refresh_from_response(response));
     }
     
+    retrieve(connection) {
+        return super.retrieve(connection).then((response) => this._refresh_from_response(response));
+    }
+
+    update(connection) {
+        return super.update(connection, this._to_request()).then((response) => this._refresh_from_response(response));
+    }
 };
 
 export class FlexContainer extends Resource {
-    constructor(container_type, resource_id) {
-        super("m2m:flex_container", resource_id);
+    constructor(container_type, resource_id, resource_name) {
+        super("m2m:flex_container", resource_id, resource_name);
         // NOTE: The below resource_type_enum is normally set by the Resource class, but we 
         // must override it b/c of specialized flex container type
         this.resource_type = container_type;
@@ -261,5 +321,99 @@ export class FlexContainer extends Resource {
         return super.update(connection, new_state);
     }
 };
+
+export class Subscription extends Resource {
+    constructor(resource_id, resource_name, notification_uri_list) {
+        super("m2m:sub", resource_id, resource_name);
+        notification_uri_list = notification_uri_list || [];
+        this.acp_ids = [];
+        this.notification_uri_list = notification_uri_list;
+        this.notification_content_type = 1;
+        this.event_notification_criteria = { "net": [1,2,3,4 ] };
+        
+        this.create = this.create.bind(this);
+        this.update = this.update.bind(this);
+        this.retrieve = this.retrieve.bind(this);
+        this._to_request = this._to_request.bind(this);
+        this._refresh_from_response = this._refresh_from_response.bind(this);
+    }
+    
+    static discover(connection, filters) {
+        filters = filters || {};
+        return super.discover(connection, 
+            Object.assign({}, filters, {ty: RESOURCE_TYPES["m2m:sub"]}));
+    }
+
+    _refresh_from_response(response) {
+        this.acp_ids = response.acpi;
+        this.notification_uri_list = response.nu;  
+        this.notification_content_type = response.nct;  
+        this.event_notification_criteria = response.enc;
+        return response;
+    }
+        
+    _to_request () {
+        return { 
+            acpi: this.acp_ids,
+            nu: this.notification_uri_list,
+            nct: this.notification_content_type,
+            enc: this.event_notification_criteria
+        };
+    }
+
+    create(connection) {
+        return super.create(connection, this._to_request()).then((response) => this._refresh_from_response(response));
+    }
+    
+    retrieve(connection) {
+        return super.retrieve(connection).then((response) => this._refresh_from_response(response));
+    }
+
+    update(connection) {
+        return super.update(connection, this._to_request()).then((response) => this._refresh_from_response(response));
+    }
+}
+
+export class PollingChannel extends Resource {
+    constructor(resource_id, resource_name) {
+        super("m2m:pch", resource_id, resource_name);
+        this.create = this.create.bind(this);
+        this.update = this.update.bind(this);
+        this.retrieve = this.retrieve.bind(this);
+        this._refresh_from_response = this._refresh_from_response.bind(this);
+        this._to_request = this._to_request.bind(this);
+        this.poll = this.poll.bind(this);
+    }
+    
+    static discover(connection, filters) {
+        filters = filters || {};
+        return super.discover(connection, 
+            Object.assign({}, {ty: RESOURCE_TYPES["m2m:pch"]}, filters));
+    }
+
+    _refresh_from_response(response) {
+        return response;
+    }
+
+    _to_request() {
+        return {};
+    }
+
+    create(connection) {
+        return super.create(connection, this._to_request());
+    }
+
+    retrieve(connection) {
+        return super.retrieve(connection).then((response) => this._refresh_from_response(response));
+    }
+
+    update(connection) {
+        return super.update(connection, this._to_request()).then((response) => this._refresh_from_response(response));
+    }
+
+    poll(connection) {
+        //return new Promise();
+    }
+}
 
 export default Resource;
