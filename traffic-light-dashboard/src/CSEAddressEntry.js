@@ -20,7 +20,6 @@ class CSEAddressEntryComponent extends React.Component {
     }
 
     render() {
-        console.log(this.props.connectCallback);        
         return ( 
         <form className="cse-input" onSubmit={this.onAddressConnect} >
             <label>

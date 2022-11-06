@@ -10,16 +10,8 @@ class TrafficLightButton extends React.Component {
         this.clickHandler = this.clickHandler.bind(this);
     }
 
-    componentDidMount() {
-        // Called when the component is placed into the DOM
-    }
-
-    componentWillUnmount() {
-        // Called when the componetns is about to be removed from the DOM
-    }
-
     clickHandler(e) {
-        this.props.lightEnableCallback(this);
+        this.props.lightEnableCallback(this.props.value);
     }
 
     render() {
@@ -37,34 +29,29 @@ class TrafficLightButton extends React.Component {
 class TrafficLightComponent extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { enabled_value: "red", connected: false };
-        this.onLightEnable = this.onLightEnable.bind(this);
+        this.onLightSelect = this.onLightSelect.bind(this);
     }
 
-    componentDidMount() {
-        // TODO: Start AE polling loop here?
-    }
-
-    onLightEnable(traffic_light_button) {
-        // Called when the user clicks on a light.
-        this.setState({enabled_value: traffic_light_button.props.value });
+    onLightSelect(new_value) {
+        // Called by TrafficLightButton when it is pressed
+        this.props.onClick(this.props.name, new_value);
     }
 
     render() {
-        // TODO: Have enabled property set based upon the state
         
-        var lights = this.props.lightvalues.map((value) =>
-            //var uppercase_label = value.t
-            <TrafficLightButton label={value.toUpperCase()} value={value} key={value}
-                enabled={value == this.state.enabled_value} 
-                lightEnableCallback={this.onLightEnable} />
-        );
-        return <div class="traffic-light-container" >
-                <h2>{this.props.name}</h2>
-                <div class="traffic-light-serial" >{this.props.serial}</div>
-                <div class="traffic-light-connect-status" >{this.state.connected ? "Connected" : "Disconnected" }</div>
-                    {lights}
-                </div>;
+        var lights = this.props.lightvalues.map((pair) => { 
+            let value = pair[0];
+            let enabled = pair[1];
+
+            return  (
+                <TrafficLightButton 
+                    label={value.toUpperCase()} 
+                    value={value} key={value}
+                    enabled={enabled} 
+                    lightEnableCallback={this.onLightSelect} />
+            );
+        });
+        return (<div className="traffic-light-container" >{lights}</div>);
     }
 }
 

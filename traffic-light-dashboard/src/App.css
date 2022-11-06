@@ -1,8 +1,5 @@
-.App {
+body {
   text-align: center;
-}
-
-.App-header {
   background-color: #282c34;
   min-height: 100vh;
   display: flex;
@@ -13,12 +10,72 @@
   color: white;
 }
 
+#top-bar {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  background-color: black;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #0FA5FF;
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.cse-input {
+  display: inline-block;
+  float: left;
+  margin-left: 5px;
+  width: 80%;
+}
+
+.cse-input input[type=text] {
+    background-color: black;
+    color: white;
+    font-family: monospace;
+    margin-left: 2px;
+    margin-right: 10px;
+    box-sizing: border-box;
+    padding-left: 2px;
+    border-width: 0 0 1px 2px;
+    border-color: white;
+    border-style: solid;
+    width: 20%;
+}
+
+.connect-status {
+    float: right;
+    margin-right: 10px;
+}
+
 .App-link {
   color: #61dafb;
 }
 
 .traffic-light-control-group {
     display: table;
+    margin-top: 1em;
+}
+
+.intersection-container {
+    background-color: #555;
+    padding: 10px;
+    float: left;
+    border: 1px solid black;
+    display: table;
+}
+
+.intersection-id {
+    font-family: monospace;
+    font-size: 1.0em;
+    color: white;
+}
+
+.connected {
+    color: green;
+}
+
+.disconnected {
+    color: red;
 }
 
 .traffic-light-container {
