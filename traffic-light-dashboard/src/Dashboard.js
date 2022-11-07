@@ -15,17 +15,19 @@ class DashboardComponent extends React.Component {
     
         this.connect = this.connect.bind(this);
         this.userSelectLight = this.userSelectLight.bind(this);
+        this.notificationTriggerRefresh = this.notificationTriggerRefresh.bind(this);
     }
 
     connect(url, originator, base_ri) {
+        let dashName = originator.substr(1);
         return this.connection.connect(url, originator, base_ri).then((response) => {
             // Create or retrieve the ACP
-            ACP.discover(this.connection, { rn: "dashboardACP" }).then((response) => {
-                this.acp = new ACP(null, "dashboardACP");
+            ACP.discover(this.connection, { rn: dashName + "ACP" }).then((response) => {
+                this.acp = new ACP(null, dashName + "ACP");
                 if (response.length == 0) {
                     console.log("creating ACP");
-                    this.acp.privileges.push(new ACR(63, ["Cdashboard"]));
-                    this.acp.self_privileges.push(new ACR(63, ["Cdashboard"]));
+                    this.acp.privileges.push(new ACR(63, [this.connection.originator]));
+                    this.acp.self_privileges.push(new ACR(63, [this.connection.originator]));
                     this.acp.parent_id = this.connection.resource_id;
                     return this.acp.create(this.connection);
                 }
@@ -38,8 +40,8 @@ class DashboardComponent extends React.Component {
                 console.log("ACP present now.");
             }).then(() => {
                 // Create or recieve the AE
-                return AE.discover(this.connection, { aei: "Cdashboard" }).then((response) => {
-                    this.ae = new AE(this.connection.originator, "Cdashboard");
+                return AE.discover(this.connection, { aei: this.connection.originator }).then((response) => {
+                    this.ae = new AE(this.connection.originator, this.connection.originator);
                     if (response.length == 0) {
                         console.log("creating AE");
                         this.ae.app_identifier = "NtrafficDashAPI";
@@ -54,8 +56,8 @@ class DashboardComponent extends React.Component {
                 });
             }).then(() => {
                 console.log("PCH");
-                return PollingChannel.discover(this.connection, { rn: "dashboardPCH" }).then((response) => {
-                    this.pch = new PollingChannel(null, "dashboardPCH", "dash-pch");
+                return PollingChannel.discover(this.connection, { rn: dashName + "PCH" }).then((response) => {
+                    this.pch = new PollingChannel(null, dashName + "PCH", "dash-pch");
                     if (response.length == 0) {
                         // create PCH
                         this.pch.parent_id = this.ae.resource_id;
@@ -84,11 +86,11 @@ class DashboardComponent extends React.Component {
             }).then((intersection_flex_cons) => {
                 let refresh_subscription_promises = [];
                 for (let i of intersection_flex_cons) {
-                    let p = Subscription.discover(this.connection, { rn: "dashboardSUB" }).then((response) => {
+                    let p = Subscription.discover(this.connection, { rn: dashName + "SUB" }).then((response) => {
                         if (response.length == 0) {
                             // Create subscription
                             console.log("creating sub");
-                            let sub = new Subscription(null, "dashboardSUB", [ this.connection.originator ]);
+                            let sub = new Subscription(null, dashName + "SUB", [ this.connection.originator ]);
                             sub.parent_id = i.resource_id;
                             sub.acp_ids = [ this.acp.resource_id ];
                             return sub.create(this.connection);
@@ -96,7 +98,7 @@ class DashboardComponent extends React.Component {
                         else {
                             // Retrieve subscription
                             console.log("retrieving sub");
-                            let sub = new Subscription(response[0], "dashboardSUB");
+                            let sub = new Subscription(response[0], dashName + "SUB");
                             return sub.retrieve(this.connection).then((response) => {
                                 // Check to make sure that the subscription is pointing to the correct originator
                                 if (sub.notification_uri_list[0] != this.connection.originator) {
@@ -111,6 +113,7 @@ class DashboardComponent extends React.Component {
                 return [intersection_flex_cons, Promise.all(refresh_subscription_promises)];
             }).then((pair) => {
                 let intersection_flex_cons = pair[0];
+                this.pch.start_poll(this.connection, this.notificationTriggerRefresh);
                 this.setState({ intersections: intersection_flex_cons, connected: true });
             }).catch((error) => {
                 console.error("Exception while connecting:")
@@ -120,19 +123,27 @@ class DashboardComponent extends React.Component {
         });
     }
 
-    componentDidMount() {
-        this.poll_interval = setInterval(() => {
-            if (this.state.connected) {
-                // Poll the polling channel for notifications
-                /*this.pch.poll(this.connection).then((notifications) => {
-
-                });*/ 
+    notificationTriggerRefresh(notification) {
+        IntersectionFlexContainer.discover(this.connection).then((intersection_ids) => {
+            // Refresh our list of intersections
+            let retrieve_promises = [];
+            for (let i of intersection_ids) {
+                let new_intersection = new IntersectionFlexContainer(i);
+                retrieve_promises.push(
+                    new_intersection.retrieve(this.connection).then(() => new_intersection)
+                );
             }
-        }, 500);
+
+            return Promise.all(retrieve_promises);
+        }).then((intersection_flex_cons) => {
+            this.setState({ intersections: intersection_flex_cons, connected: true });
+        });
     }
 
     componentWillUnmount() {
-        clearInterval(this.poll_interval);
+        if (this.state.connected) {
+            this.pch.stop_poll();
+        }
     }
 
     userSelectLight(intersection_index, light, value) {

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { RESOURCE_TYPES, create_random_identifier } from "./onem2m_constants.js";
-import { filterUsage, discResType } from "./onem2m_enums.js";
+import { filterUsage, discResType, notificationEventType } from "./onem2m_enums.js";
 
 export class Resource {
     constructor(resource_type, resource_id, resource_name) {
@@ -382,7 +382,11 @@ export class PollingChannel extends Resource {
         this.retrieve = this.retrieve.bind(this);
         this._refresh_from_response = this._refresh_from_response.bind(this);
         this._to_request = this._to_request.bind(this);
-        this.poll = this.poll.bind(this);
+        
+        this.is_polling = false;
+        this.start_poll = this.start_poll.bind(this);
+        this.stop_poll = this.stop_poll.bind(this);
+        this._poll_loop = this._poll_loop.bind(this);
     }
     
     static discover(connection, filters) {
@@ -411,8 +415,48 @@ export class PollingChannel extends Resource {
         return super.update(connection, this._to_request()).then((response) => this._refresh_from_response(response));
     }
 
-    poll(connection) {
-        //return new Promise();
+    _poll_loop() {
+        if(this.is_polling) {
+            axios({
+                method: "get",
+                headers: {
+                    "X-M2M-Origin": this._connection.originator,
+                    "X-M2M-RI": create_random_identifier(),
+                    "X-M2M-RVI": "3"
+                },
+                responseType: "json",
+                baseURL: this._connection.url,
+                url: this.resource_id + "/pcu"
+            }).then((response) => {
+                response = response.data["m2m:rqp"]
+                this._response_callback(response);
+                console.log(response);
+                this._poll_loop();
+            }).catch((error) => {
+                if (error.response && error.response.status === 504) {
+                    // long poll timed out, this means there wasn't any updates
+                    this._poll_loop();
+                }
+                else {
+                    console.error("Error while polling channel!");
+                    console.error(error);
+                    throw error;
+                }
+            });
+        }
+    }
+
+    start_poll(connection, callback) {
+        if (!this.is_polling) {
+            this._response_callback = callback;
+            this._connection = connection;
+            setTimeout(this._poll_loop, 50);
+            this.is_polling = true;
+        }
+    }
+
+    stop_poll() {
+        this.is_polling = false;
     }
 }
 
