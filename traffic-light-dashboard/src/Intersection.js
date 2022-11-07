@@ -1,5 +1,5 @@
 import React from 'react';
-import { Resource, FlexContainer } from "./onem2m.js";
+import { Resource, FlexContainer, NotificationEvent } from "./onem2m.js";
 import TrafficLightComponent from "./TrafficLight.js";
 
 export class IntersectionFlexContainer extends FlexContainer {
@@ -15,6 +15,8 @@ export class IntersectionFlexContainer extends FlexContainer {
 
         this.retrieve = this.retrieve.bind(this);
         this.update = this.update.bind(this);
+        this._refresh_from_response = this._refresh_from_response.bind(this);
+        this.handle_update_notification = this.handle_update_notification.bind(this);
     }
 
     static discover(connection, filters) {
@@ -23,20 +25,23 @@ export class IntersectionFlexContainer extends FlexContainer {
         return super.discover(connection, filters);
     }
 
+    _refresh_from_response(response) {
+        this.ble_state = response.bts;
+        this.light1_state = response.l1s;
+        this.light2_state = response.l2s;
+    }
+
+    handle_update_notification(update_notification) {
+        update_notification = super.handle_update_notification(update_notification);
+        this._refresh_from_response(update_notification);
+    }
+
     retrieve(connection) {
-        return super.retrieve(connection).then((response) => {
-            this.ble_state = response.bts;
-            this.light1_state = response.l1s;
-            this.light2_state = response.l2s;
-        });
+        return super.retrieve(connection).then((response) => this._refresh_from_response(response));
     }
 
     update(connection, new_state) {
-        return super.update(connection, new_state).then((response) => {
-            this.ble_state = response.bts;
-            this.light1_state = response.l1s;
-            this.light2_state = response.l2s;
-        });
+        return super.update(connection, new_state).then((response) => this._refresh_from_response(response));
     }
 };
 

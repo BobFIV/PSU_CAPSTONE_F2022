@@ -15,6 +15,8 @@
 #include "events/ae_event.h"
 #include "events/led_state_event.h"
 
+#include "deployment_settings.h"
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
@@ -44,7 +46,7 @@ void ble_connection_management_thread() {
 		else if (!ble_connected) {
 			// LTE is connected, but BLE is not
 			if (!ble_scanning) {
-				send_command("!start_scan;");
+				send_command("!start_scan" BLE_TARGET ";");
 			}
 		}
 	}
@@ -169,7 +171,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			if (lte_connected) {
 				set_blue_led();
 			}
-			send_command("!start_scan;");
+			send_command("!start_scan" BLE_TARGET ";");
         }
 		else if (event->cmd == BLE_SCAN_STARTED) {
 			ble_scanning = true;
@@ -186,7 +188,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_module_state_event(aeh);
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
-			send_command("!start_scan;");
+			send_command("!start_scan" BLE_TARGET ";");
 			set_yellow_led();
 		}
 
