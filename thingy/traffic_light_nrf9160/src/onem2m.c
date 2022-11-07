@@ -15,9 +15,13 @@ LOG_MODULE_REGISTER(oneM2M, LOG_LEVEL_INF);
 #define ACPI_LENGTH 40
 char acpi[ACPI_LENGTH];
 
+#define aei_LENGTH 50
+char aeurl[aei_LENGTH];
+
 void init_oneM2M() {
     // Call this at startup
     memset(acpi, 0, ACPI_LENGTH);
+    memset(aeurl, 0, aei_LENGTH);
 }
 
 void createACP() {
@@ -88,7 +92,73 @@ void createACP() {
     give_http_sem();
 }
 
-char* createAE(char* resourceName, char* acpi) {
+char* createAE() {
+
+    LOG_INF("Creating AE");
+    
+    //create headers needed for the creation of AE
+    const char* headers[] = {
+        "Content-Type: application/json;ty=2\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+
+    char payload[400];
+    memset(payload, 0, 400);
+    //Create the payload to send to the ACME server
+    sprintf(payload, "{\
+        \"m2m:ae\": {\
+            \"acpi\": [\
+                \"%s\"\
+            ],\
+            \"api\": \"NtrafficAPI\",\
+            \"rn\": \"intersection" DEVICE_LETTER "\",\
+            \"srv\": [\
+                \"3\"\
+            ],\
+            \"rr\": false\
+        }\
+    }", acpi);
+    
+    // make post request
+    take_http_sem();
+    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to create AE!");
+        give_http_sem();
+        return NULL;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:ae");
+        if (cJSON_IsObject(ae))
+        {
+            const cJSON* aei = cJSON_GetObjectItemCaseSensitive(ae, "aei");
+            if (cJSON_IsString(aei) && (aei->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(aeurl, aei->valuestring, aei_LENGTH);
+                LOG_INF("Created AE, aei=%s", aeurl);
+            }
+            else {
+                LOG_ERR("Failed to find \"aei\" JSON field!");
+            }
+        }
+        else {
+            LOG_ERR("Failed to find \"m2m:acp\" JSON field!");
+        }
+        
+    }
+    free_json_response(j);
+
+    give_http_sem();
+
+    LOG_INF("Created AE");
+
     return NULL;
 }
 
@@ -108,7 +178,54 @@ char* retrieveContainer(char* resourceName, char* parentID) {
     return NULL;
 }
 
-char* createFlexContainer(char* resourceName, char* parentID, int mni, char* acpi) {
+char* createFlexContainer() {
+
+    LOG_INF("Creating Flex Container");
+    
+    //create headers needed for the creation of AE
+    const char* headers[] = {
+        "Content-Type: application/json;ty=28\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+
+    char payload[400];
+    memset(payload, 0, 400);
+    //Create the payload to send to the ACME server
+    sprintf(payload, "{\
+        \"traffic:trfint\": {\
+            \"acpi\": [\
+                \"%s\"\
+            ],\
+            \"cnd\": \"edu.psu.cse.traffic.trafficLightIntersection\",\
+            \"rn\": \"intersection\",\
+            \"l1s\": \"red\",\
+            \"l2s\": \"red\",\
+            \"bts\": \"disconnected\"\
+        }\
+    }", acpi);
+
+
+
+    // make post request
+    take_http_sem();
+    char flexURL[51];
+    memset(flexURL, 0, 51);
+    sprintf(flexURL,"/%s", aeurl);
+    int response_length = post_request(ENDPOINT_HOSTNAME, flexURL, payload, strlen(payload), headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to create Flex Container!");
+        give_http_sem();
+        return NULL;
+    }
+
+    give_http_sem();
+    
+    LOG_INF("Created Flex Container");
+
     return NULL;
 }
 

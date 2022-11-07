@@ -328,6 +328,8 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 				// TODO: Add in the oneM2M calls to setup the AE and polling channel.
 				createACP();
+				createAE();
+				createFlexContainer();
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
