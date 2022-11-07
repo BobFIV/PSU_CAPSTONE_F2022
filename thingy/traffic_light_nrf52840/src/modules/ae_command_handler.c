@@ -48,6 +48,7 @@ void parser_end() {
         bool valid_cmd = false;
         enum ae_commands cmd;
         enum light_states state;
+        char* scan_target = 0;
 
         if (strncmp(&cmd_parse_buf[0], "green1", CMD_PARSE_BUFFER_SIZE) == 0) {
             cmd = AE_CMD_SET_STATE1;
@@ -89,8 +90,11 @@ void parser_end() {
             state = LIGHT_OFF;
             valid_cmd = true;
         }
-        else if (strncmp(&cmd_parse_buf[0], "start_scan", CMD_PARSE_BUFFER_SIZE) == 0) {
+        else if (strncmp(&cmd_parse_buf[0], "start_scan", 10) == 0) {
             cmd = AE_CMD_START_SCAN;
+            scan_target = k_malloc(30);
+            memset(scan_target,0,30);
+            strncpy(scan_target, &cmd_parse_buf[10], 30);
             state = 0;
             valid_cmd = true;
         }
@@ -106,6 +110,7 @@ void parser_end() {
             event = new_ae_command_event();
             event->cmd = cmd;
             event->light_state = state;
+            event->scan_target = scan_target;
             APP_EVENT_SUBMIT(event);
         }
         else {
@@ -118,11 +123,12 @@ static bool app_event_handler(const struct app_event_header *aeh)
 {
 
     if (is_ae_command_event(aeh)) {
-		//const struct ae_command_event *event =
-		//	cast_ae_command_event(aeh);
+		const struct ae_command_event *event =
+			cast_ae_command_event(aeh);
         // Deallocate anything we dynamically allocated for the event.
-        // As of Oct. 12, 2022 we do not dynamically allocate anything.
-
+        if (event->cmd == AE_CMD_START_SCAN) {
+            k_free(event->scan_target);
+        }
 		return true;
 	}
 

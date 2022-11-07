@@ -46,6 +46,7 @@ static struct bt_conn *default_conn;
 static struct bt_nus_client nus_client;
 bool ble_connected = false;
 bool ble_scanning = false;
+static char* target_device_name;
 
 static void ble_data_sent(struct bt_nus_client *nus, uint8_t err,
 					const uint8_t *const data, uint16_t len)
@@ -325,13 +326,13 @@ static int scan_init(void)
 	bt_scan_init(&scan_init);
 	bt_scan_cb_register(&scan_cb);
 
-	err = bt_scan_filter_add(BT_SCAN_FILTER_TYPE_UUID, BT_UUID_NUS_SERVICE);
+	err = bt_scan_filter_add(BT_SCAN_FILTER_TYPE_NAME, target_device_name);
 	if (err) {
-		LOG_ERR("Scanning filters cannot be set (err %d)", err);
+		LOG_ERR("BLE Device Name filters cannot be set (err %d)", err);
 		return err;
 	}
 
-	err = bt_scan_filter_enable(BT_SCAN_UUID_FILTER, false);
+	err = bt_scan_filter_enable(BT_SCAN_NAME_FILTER, true);
 	if (err) {
 		LOG_ERR("Filters cannot be turned on (err %d)", err);
 		return err;
@@ -408,6 +409,17 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_ae_command_event(aeh);
         switch (event->cmd) {
             case AE_CMD_START_SCAN:
+				bt_scan_filter_remove_all();
+				strncpy(target_device_name, event->scan_target, 30);
+				err = bt_scan_filter_add(BT_SCAN_FILTER_TYPE_NAME, target_device_name);
+				if (err) {
+					LOG_ERR("BLE Device Name filters cannot be set (err %d)", err);
+					return err;
+				}
+				else {
+					LOG_INF("Set name filter: %s", target_device_name);
+				}
+				
 				if (!ble_scanning) {
 					err = bt_scan_start(BT_SCAN_TYPE_SCAN_ACTIVE);
 					if (err) {
@@ -488,6 +500,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_module_state_event(aeh);
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
+			target_device_name = k_malloc(30);
+			char * default_target_name = "Intersection-Default";
+			strncpy(target_device_name, default_target_name, 30);
             nus_module_startup();
 		}
 
@@ -507,7 +522,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		/* All subscribers have gotten a chance to copy data at this point */
 		//k_mem_slab_free(&ble_rx_slab, (void **) &event->buf);
 
-		return false;
+		return true;
     }
 
 	/* If event is unhandled, unsubscribe. */

@@ -37,6 +37,7 @@ struct ae_command_event {
 	struct app_event_header header;
 	enum ae_commands cmd;
 	enum light_states light_state;
+	char* scan_target;
 };
 
 APP_EVENT_TYPE_DECLARE(ae_command_event);
