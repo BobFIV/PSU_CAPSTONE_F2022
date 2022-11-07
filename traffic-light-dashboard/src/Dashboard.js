@@ -15,7 +15,7 @@ class DashboardComponent extends React.Component {
     
         this.connect = this.connect.bind(this);
         this.userSelectLight = this.userSelectLight.bind(this);
-        this.notificationTriggerRefresh = this.notificationTriggerRefresh.bind(this);
+        this.handleNotification = this.handleNotification.bind(this);
     }
 
     connect(url, originator, base_ri) {
@@ -113,7 +113,7 @@ class DashboardComponent extends React.Component {
                 return [intersection_flex_cons, Promise.all(refresh_subscription_promises)];
             }).then((pair) => {
                 let intersection_flex_cons = pair[0];
-                this.pch.start_poll(this.connection, this.notificationTriggerRefresh);
+                this.pch.start_poll(this.connection, this.handleNotification);
                 this.setState({ intersections: intersection_flex_cons, connected: true });
             }).catch((error) => {
                 console.error("Exception while connecting:")
@@ -123,21 +123,17 @@ class DashboardComponent extends React.Component {
         });
     }
 
-    notificationTriggerRefresh(notification) {
-        IntersectionFlexContainer.discover(this.connection).then((intersection_ids) => {
-            // Refresh our list of intersections
-            let retrieve_promises = [];
-            for (let i of intersection_ids) {
-                let new_intersection = new IntersectionFlexContainer(i);
-                retrieve_promises.push(
-                    new_intersection.retrieve(this.connection).then(() => new_intersection)
-                );
+    handleNotification(notification) {
+        let update_representation = notification.pc["m2m:sgn"].nev.rep;
+        let updated_id = update_representation["traffic:trfint"].ri;
+        let intersections = this.state.intersections;
+        for (let i = 0; i < intersections.length; i++) {
+            if (intersections[i].resource_id == updated_id) {
+                intersections[i].handle_update_notification(update_representation);
             }
-
-            return Promise.all(retrieve_promises);
-        }).then((intersection_flex_cons) => {
-            this.setState({ intersections: intersection_flex_cons, connected: true });
-        });
+        }
+        
+        this.setState({ intersections: intersections, connected: true });
     }
 
     componentWillUnmount() {

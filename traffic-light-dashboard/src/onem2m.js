@@ -17,12 +17,15 @@ export class Resource {
         this.retrieve = this.retrieve.bind(this);
         this.create = this.create.bind(this);
         this.update = this.update.bind(this);
+        this.handle_update_notification = this.handle_update_notification.bind(this);
         this._resource_refresh_from_response = this._resource_refresh_from_response.bind(this);
         this._resource_to_request = this._resource_to_request.bind(this);
     }
 
     _resource_refresh_from_response(response) {
-        response = response.data[this.resource_type];
+        if(response.data) {
+            response = response.data[this.resource_type];
+        }
         this.last_modified_time = response.lt;
         this.creation_time = response.ct;
         this.expiration_time = response.et;
@@ -132,6 +135,10 @@ export class Resource {
             throw error;
         });
     }
+
+    handle_update_notification(notification) {
+        return this._resource_refresh_from_response(notification); 
+    }
 }
 
 export class CSE_Connection extends Resource {
@@ -228,7 +235,7 @@ export class ACP extends Resource {
     }
     
     retrieve(connection) {
-        return super.retrieve(connection).then((response) => { console.log(response); this._refresh_from_response(response)});
+        return super.retrieve(connection).then((response) => { this._refresh_from_response(response)});
     }
 
     update(connection) {
@@ -302,12 +309,17 @@ export class FlexContainer extends Resource {
     
         this.retrieve = this.retrieve.bind(this);
         this.update = this.update.bind(this);
+        this.handle_update_notification = this.handle_update_notification.bind(this);
     }
 
     static discover(connection, filters) {
         filters = filters || {};
         return super.discover(connection, 
             Object.assign({}, filters, {ty: RESOURCE_TYPES["m2m:flex_container"]}));
+    }
+
+    handle_update_notification(notification) {
+        return super.handle_update_notification({ data: notification });
     }
 
     retrieve(connection) {
@@ -416,6 +428,7 @@ export class PollingChannel extends Resource {
     }
 
     _poll_loop() {
+    
         if(this.is_polling) {
             axios({
                 method: "get",
@@ -430,12 +443,35 @@ export class PollingChannel extends Resource {
             }).then((response) => {
                 response = response.data["m2m:rqp"]
                 this._response_callback(response);
-                console.log(response);
-                this._poll_loop();
+                let request_id_echo = response.rqi;
+
+                let acknowledge_data = { "m2m:rsp": {
+                    rqi: request_id_echo,
+                    pc: response.pc,
+                    rsc: 2004,
+                    rvi: "3"
+                }};
+                
+                // Acknowledge the update
+                axios({
+                    method: "post",
+                    headers: {
+                        "X-M2M-Origin": this._connection.originator,
+                        "X-M2M-RI": request_id_echo,
+                        "X-M2M-RVI": "3"
+                    },
+                    responseType: "json",
+                    baseURL: this._connection.url,
+                    url: this.resource_id + "/pcu",
+                    data: acknowledge_data
+                }).then(() => {
+                    // Perform the next long poll request
+                    setTimeout(this._poll_loop, 50);
+                });
             }).catch((error) => {
                 if (error.response && error.response.status === 504) {
                     // long poll timed out, this means there wasn't any updates
-                    this._poll_loop();
+                    setTimeout(this._poll_loop, 50);
                 }
                 else {
                     console.error("Error while polling channel!");
