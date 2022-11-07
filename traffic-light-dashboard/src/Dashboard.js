@@ -92,6 +92,7 @@ class DashboardComponent extends React.Component {
                             console.log("creating sub");
                             let sub = new Subscription(null, dashName + "SUB", [ this.connection.originator ]);
                             sub.parent_id = i.resource_id;
+                            sub.net = [ 1, 2 ];
                             sub.acp_ids = [ this.acp.resource_id ];
                             return sub.create(this.connection);
                         }
@@ -124,15 +125,28 @@ class DashboardComponent extends React.Component {
     }
 
     handleNotification(notification) {
-        let update_representation = notification.pc["m2m:sgn"].nev.rep;
-        let updated_id = update_representation["traffic:trfint"].ri;
+        let update_type = notification.pc["m2m:sgn"].nev.net;
+        console.log(notification)
         let intersections = this.state.intersections;
-        for (let i = 0; i < intersections.length; i++) {
-            if (intersections[i].resource_id == updated_id) {
-                intersections[i].handle_update_notification(update_representation);
+        if (update_type == 1) {
+            let update_representation = notification.pc["m2m:sgn"].nev.rep;
+            let updated_id = update_representation["traffic:trfint"].ri;
+            for (let i = 0; i < intersections.length; i++) {
+                if (intersections[i].resource_id == updated_id) {
+                    intersections[i].handle_update_notification(update_representation);
+                }
             }
         }
-        
+        else if (update_type == 2) {
+            // Intersection deleted
+            let update_representation = notification.pc["m2m:sgn"].nev.rep;
+            let updated_id = update_representation["traffic:trfint"].ri;
+            for (let i = 0; i < intersections.length; i++) {
+                if (intersections[i].resource_id == updated_id) {
+                    intersections.splice(i,1);
+                }
+            }
+        }
         this.setState({ intersections: intersections, connected: true });
     }
 
