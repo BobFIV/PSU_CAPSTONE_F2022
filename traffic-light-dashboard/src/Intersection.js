@@ -33,8 +33,6 @@ export class IntersectionFlexContainer extends FlexContainer {
 
     handle_update_notification(update_notification) {
         update_notification = super.handle_update_notification(update_notification);
-        console.log("Refresh using: ");
-        console.log(update_notification);
         this._refresh_from_response(update_notification);
     }
 
