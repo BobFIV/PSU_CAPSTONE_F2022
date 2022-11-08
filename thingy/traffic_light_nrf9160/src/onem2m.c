@@ -18,10 +18,14 @@ char acpi[ACPI_LENGTH];
 #define aei_LENGTH 50
 char aeurl[aei_LENGTH];
 
+#define flexident_LENGTH 100
+char flexident[flexident_LENGTH]; 
+
 void init_oneM2M() {
     // Call this at startup
     memset(acpi, 0, ACPI_LENGTH);
     memset(aeurl, 0, aei_LENGTH);
+    memset(flexident, 0, flexident_LENGTH);
 }
 
 void createACP() {
@@ -90,6 +94,61 @@ void createACP() {
     free_json_response(j);
 
     give_http_sem();
+}
+
+
+bool retrieveACP() {
+    LOG_INF("Checking to see if ACP is already created");
+
+    //create headers for get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create URL 
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"id-in?fu=1&drt=2&ty=1&rn=%s-ACP", M2M_ORIGINATOR);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if ACP is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        //the AE was found. take the information we need from it
+        const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
+        if (cJSON_GetArraySize(ae) != 0)
+        {
+            const cJSON* ri = cJSON_GetArrayItem(ae, 0);
+            if (cJSON_IsString(ri) && (ri->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(acpi, &ri->valuestring[7], ACPI_LENGTH);
+                LOG_INF("Found acpi, acpi=%s", acpi);
+            }
+            else {
+                LOG_ERR("Failed to find \"acpi\" JSON field!");
+            }
+        }
+        else {
+            LOG_INF("There is no matching ACP found");
+            free_json_response(j);
+            give_http_sem();
+            return false;
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return true;
 }
 
 char* createAE() {
@@ -162,8 +221,58 @@ char* createAE() {
     return NULL;
 }
 
-char* retrieveAE(char* resourceName) {
-    return NULL;
+bool retrieveAE() {
+    LOG_INF("Checking to see if AE is already created");
+
+    //create headers for get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    take_http_sem();
+    //create URL 
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"id-in?fu=1&drt=2&ty=2&rn=intersection%s", DEVICE_LETTER);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if AE is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        //the AE was found. take the information we need from it
+        const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
+        if (cJSON_GetArraySize(ae) != 0)
+        {
+            const cJSON* aei = cJSON_GetArrayItem(ae, 0);
+            if (cJSON_IsString(aei) && (aei->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(aeurl, &aei->valuestring[7], aei_LENGTH);
+                LOG_INF("Found AE, ae=%s", aeurl);
+            }
+            else {
+                LOG_ERR("Failed to find \"aei\" JSON field!");
+            }
+        }
+        else {
+            LOG_INF("There is no matching AE found");
+            free_json_response(j);
+            give_http_sem();
+            return false;
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return true;
 }
 
 int deleteAE(char* resourceName) {
@@ -222,15 +331,89 @@ char* createFlexContainer() {
         return NULL;
     }
 
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
+        if (cJSON_IsObject(flex))
+        {
+            const cJSON* ri = cJSON_GetObjectItemCaseSensitive(flex, "ri");
+            if (cJSON_IsString(ri) && (ri->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(flexident, ri->valuestring, flexident_LENGTH);
+                LOG_INF("Created Flex Container, Flex Contationer Identifier=%s", flexident);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_ERR("Failed to find \"traffic:trfint\" JSON field!");
+        }
+        
+    }
+    free_json_response(j);
+
     give_http_sem();
-    
+
     LOG_INF("Created Flex Container");
 
     return NULL;
 }
 
-char* retrieveFlexContainer(char* resourceName, char* parentID) {
-    return NULL;
+bool retrieveFlexContainer() {
+    LOG_INF("Checking to see if flex container is already created");
+
+    //create headers for get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create URL 
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"id-in?fu=1&drt=2&ty=28&pi=%s", aeurl);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if flex container is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        //the AE was found. take the information we need from it
+        const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
+        if (cJSON_GetArraySize(ae) != 0)
+        {
+            const cJSON* aei = cJSON_GetArrayItem(ae, 0);
+            if (cJSON_IsString(aei) && (aei->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(flexident, &aei->valuestring[7], flexident_LENGTH);
+                LOG_INF("Found flex container identity, acpi=%s", flexident);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_INF("There is no matching flex container found");
+            free_json_response(j);
+            give_http_sem();
+            return false;
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return true;
 }
 
 int createCIN(char* parentID, char* content, char* label) {
@@ -274,3 +457,90 @@ void retrieveCIN(char* parentID, char* CNTName) {
     cJSON_Delete(parsed_json);
 
 */
+
+
+
+void get_flex_container() {
+    LOG_INF("getting contents of the flex container");
+
+    //need to create headers for the get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create a url that targest the flex container
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"/%s", flexident);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if flex container is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    //parse the response
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
+        if (cJSON_IsObject(flex))
+        {
+            //have the data from the flex container. parse the data out
+
+            //parse light one status
+            const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
+            if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
+            {
+                //Do something with the data
+                LOG_INF("Got light 1s status: %s", lOne->valuestring);
+
+                
+            }
+            else {
+                LOG_ERR("Failed to find \"l1s\" JSON field!");
+            }
+
+
+            //parse light two status
+            const cJSON* lTwo = cJSON_GetObjectItemCaseSensitive(flex, "l2s");
+            if (cJSON_IsString(lTwo) && (lTwo->valuestring != NULL))
+            {
+                //Do something with the data
+                LOG_INF("Got light 2s status: %s", lTwo->valuestring);
+
+                
+            }
+            else {
+                LOG_ERR("Failed to find \"l2s\" JSON field!");
+            }
+
+
+            //parse bluetooth status
+            const cJSON* blueStat = cJSON_GetObjectItemCaseSensitive(flex, "bts");
+            if (cJSON_IsString(blueStat) && (blueStat->valuestring != NULL))
+            {
+                //Do something with the data
+                LOG_INF("Got bluetooth status: %s", blueStat->valuestring);
+
+                
+            }
+            else {
+                LOG_ERR("Failed to find \"bts\" JSON field!");
+            }
+
+
+
+        }
+        else {
+            LOG_ERR("Failed to find \"traffic:trfint\" JSON field!");
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return;
+}

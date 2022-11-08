@@ -10,14 +10,16 @@ void init_oneM2M();
 
 void createACP();
 char* createAE();
-char* retrieveAE(char* resourceName);
+bool retrieveAE();
+bool retriveACP();
 int deleteAE(char* resourceName);
 char* createContainer(char* resourceName, char* parentID, int mni, char* acpi);
 char* retrieveContainer(char* resourceName, char* parentID);
 char* createFlexContainer();
-char* retrieveFlexContainer(char* resourceName, char* parentID);
+bool retrieveFlexContainer();
 int createCIN(char* parentID, char* content, char* label);
 void retrieveCIN(char* parentID, char* CNTName);
+void get_flex_container();
 
 
 #endif // TRAFFIC_LIGHT_NRF9160_ONEM2M_H_
