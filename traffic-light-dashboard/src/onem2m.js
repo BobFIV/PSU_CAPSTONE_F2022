@@ -306,7 +306,9 @@ export class FlexContainer extends Resource {
         // must override it b/c of specialized flex container type
         this.resource_type = container_type;
         this.container_definition = "";
-    
+        this.acp_ids = [];
+   
+        this.create = this.create.bind(this); 
         this.retrieve = this.retrieve.bind(this);
         this.update = this.update.bind(this);
         this.handle_update_notification = this.handle_update_notification.bind(this);
@@ -325,12 +327,19 @@ export class FlexContainer extends Resource {
     retrieve(connection) {
         return super.retrieve(connection).then((response) => {
             this.container_definition = response.cnd;
+            this.acp_ids = response.acpi;
             return response;
         });
     }
 
     update(connection, new_state) {
         return super.update(connection, new_state);
+    }
+
+    create(connection, new_state) {
+        new_state.cnd = this.container_definition;
+        new_state.acpi = this.acp_ids;
+        return super.create(connection, new_state);
     }
 };
 
@@ -341,7 +350,7 @@ export class Subscription extends Resource {
         this.acp_ids = [];
         this.notification_uri_list = notification_uri_list;
         this.notification_content_type = 1;
-        this.event_notification_criteria = { "net": [1,2,3,4 ] };
+        this.event_notification_criteria = { "net": [] };
         
         this.create = this.create.bind(this);
         this.update = this.update.bind(this);

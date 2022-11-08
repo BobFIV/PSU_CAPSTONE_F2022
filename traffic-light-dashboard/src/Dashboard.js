@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 import CSEAddressEntryComponent from "./CSEAddressEntry.js";
+import AddIntersectionButton from "./AddIntersectionButton.js";
 import { Resource, CSE_Connection, AE, ACP, ACR, FlexContainer, PollingChannel, Subscription } from "./onem2m.js";
 import { IntersectionFlexContainer, IntersectionComponent } from "./Intersection.js";
 
@@ -20,6 +21,7 @@ class DashboardComponent extends React.Component {
 
     connect(url, originator, base_ri) {
         let dashName = originator.substr(1);
+        
         return this.connection.connect(url, originator, base_ri).then((response) => {
             // Create or retrieve the ACP
             ACP.discover(this.connection, { rn: dashName + "ACP" }).then((response) => {
@@ -86,13 +88,14 @@ class DashboardComponent extends React.Component {
             }).then((intersection_flex_cons) => {
                 let refresh_subscription_promises = [];
                 for (let i of intersection_flex_cons) {
-                    let p = Subscription.discover(this.connection, { rn: dashName + "SUB" }).then((response) => {
+                    console.log(i);
+                    let p = Subscription.discover(this.connection, { rn: dashName + "SUB", pi: i.resource_id }).then((response) => {
                         if (response.length == 0) {
                             // Create subscription
                             console.log("creating sub");
                             let sub = new Subscription(null, dashName + "SUB", [ this.connection.originator ]);
                             sub.parent_id = i.resource_id;
-                            sub.net = [ 1, 2 ];
+                            sub.event_notification_criteria = { net: [ 1, 2 ] };
                             sub.acp_ids = [ this.acp.resource_id ];
                             return sub.create(this.connection);
                         }
@@ -111,6 +114,23 @@ class DashboardComponent extends React.Component {
                     });
                     refresh_subscription_promises.push(p);
                 }
+
+                // Discover + create subscription to the CSE for intersection creations
+                let p = Subscription.discover(this.connection, { rn: dashName + "SUB", pi: this.connection.resource_id }).then((response) => {
+                    if (response.length == 0) {
+                        // Create the subscription
+                        let s = new Subscription(null, dashName + "SUB", [ this.connection.originator ]);
+                        s.acp_ids = [ this.acp.resource_id ];
+                        s.parent_id = this.connection.resource_id;
+                        s.event_notification_criteria = {
+                            net: [ 3 ],
+                            chty: [ 2 ]
+                        };
+                        return s.create(this.connection);
+                    }
+                });
+                refresh_subscription_promises.push(p);
+
                 return [intersection_flex_cons, Promise.all(refresh_subscription_promises)];
             }).then((pair) => {
                 let intersection_flex_cons = pair[0];
@@ -128,7 +148,9 @@ class DashboardComponent extends React.Component {
         let update_type = notification.pc["m2m:sgn"].nev.net;
         console.log(notification)
         let intersections = this.state.intersections;
+        let dashName = this.connection.originator.substr(1);
         if (update_type == 1) {
+            // Intersection updates
             let update_representation = notification.pc["m2m:sgn"].nev.rep;
             let updated_id = update_representation["traffic:trfint"].ri;
             for (let i = 0; i < intersections.length; i++) {
@@ -145,6 +167,30 @@ class DashboardComponent extends React.Component {
                 if (intersections[i].resource_id == updated_id) {
                     intersections.splice(i,1);
                 }
+            }
+        }
+        else if (update_type == 3) {
+            // something was created
+            let update_representation = notification.pc["m2m:sgn"].nev.rep;
+            console.log(update_representation);
+            if (update_representation["m2m:ae"] && update_representation["m2m:ae"].api=="NtrafficAPI") {
+                // A new AE was created, subscribe to it
+                update_representation = update_representation["m2m:ae"];
+                let s = new Subscription(null, dashName + "SUB", [ this.connection.originator ]);
+                s.parent_id = update_representation.ri;
+                s.event_notification_criteria = { net: [ 3 ], chty: [ 28 ] };
+                s.acp_ids = [ this.acp.resource_id ];
+                s.create(this.connection);
+            }
+            else if (update_representation["traffic:trfint"]) {
+                let i = new IntersectionFlexContainer(update_representation["traffic:trfint"].ri);
+                i.handle_update_notification(update_representation);
+                intersections.push(i);
+                let s = new Subscription(null, dashName + "SUB", [ this.connection.originator ]);
+                s.parent_id = i.resource_id;
+                s.event_notification_criteria = { net: [ 1, 2 ] };
+                s.acp_ids = [ this.acp.resource_id ];
+                s.create(this.connection);
             }
         }
         this.setState({ intersections: intersections, connected: true });
@@ -212,7 +258,10 @@ class DashboardComponent extends React.Component {
                 <div className="traffic-light-control-group" >
                     {intersectionComponents}
                 </div>
-            
+
+                <div className="debug-group" >
+                    <AddIntersectionButton connection_template={this.connection} />
+                </div> 
             </div>
         );
     }
