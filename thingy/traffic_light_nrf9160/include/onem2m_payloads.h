@@ -9,22 +9,10 @@
 #include "deployment_settings.h"
 
 static char* acp_create_payload = "{\
-    \"m2m:acp\": { \
-        \"rn\": \"" M2M_ORIGINATOR "-ACP\",\
-        \"pv\": {\
-            \"acr\": [\
-                {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
-                {\"acor\": [\"" M2M_ORIGINATOR "\"], \"acop\": 63}\
-            ]\
-        },\
-        \"pvs\": {\
-            \"acr\": [\
-                {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
-                {\"acor\": [\"" M2M_ORIGINATOR "\"], \"acop\": 63}\
-            ]\
-        }\
-    }\
-}";
+\"m2m:acp\":{\"rn\": \"" M2M_ORIGINATOR "-ACP\",\"pv\": {\"acr\": [{\"acor\":[\"Cdashboard\",\"Cdashboard1\",\"Cdashboard2\",\"Cdashboard3\",\"Cdashboard4\",\"Cdashboard5\",\"Cdashboard6\",\"Cdashboard7\",\"Cdashboard8\",\"Cdashboard9\",\"Cdashboard10\"], \"acop\": 63},\
+{\"acor\":[\"" M2M_ORIGINATOR "\"], \"acop\": 63}]},\"pvs\": {\"acr\": [\
+{\"acor\":[\"Cdashboard\",\"Cdashboard1\",\"Cdashboard2\",\"Cdashboard3\",\"Cdashboard4\",\"Cdashboard5\",\"Cdashboard6\",\"Cdashboard7\",\"Cdashboard8\",\"Cdashboard9\",\"Cdashboard10\"], \"acop\": 63},\
+{\"acor\":[\"" M2M_ORIGINATOR "\"], \"acop\": 63}]}}}";
 
 static char* ae_create_payload = "{\
     \"m2m:ae\": {\

@@ -773,7 +773,7 @@ void onem2m_performPoll() {
     LOG_INF("Acknowledging PCH rqi: %s", rqi_value);
     char m2m_ri_echo[63];
     memset(m2m_ri_echo, 0, 63);
-    sprintf(m2m_ri_echo, "X-MRM-RI: %s\r\n", rqi_value);
+    sprintf(m2m_ri_echo, "X-M2M-RI: %s\r\n", rqi_value);
     const char* echo_headers[] = {
         "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
@@ -788,7 +788,7 @@ void onem2m_performPoll() {
     // Note: At this point, rqp HAS to exist b/c we just retrieved it to update the lights
     const cJSON* rqp = cJSON_GetObjectItemCaseSensitive(j, "m2m:rqp");
     cJSON* pc = cJSON_GetObjectItemCaseSensitive(rqp, "pc");
-    if(!cJSON_PrintPreallocated(pc, pc_echo, 600, cJSON_False)) {
+    if(!cJSON_PrintPreallocated(pc, pc_echo, 600, false)) {
         LOG_ERR("Ran out of space in buffer while printing JSON for PCH response!");
         free_json_response(j);
         give_http_sem();

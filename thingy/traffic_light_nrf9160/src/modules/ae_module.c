@@ -61,7 +61,17 @@ void push_flex_container() {
 	memset(l2_state_string,0,10);
 	light_state_to_string(light1_state, l1_state_string);
 	light_state_to_string(light2_state, l2_state_string);
-	updateFlexContainer(l1_state_string, l2_state_string, ble_connected ? "connected" : "disconnected");
+	
+	char ble_string[20];
+	memset(ble_string, 0, 20);
+	if (ble_connected) {
+		strcpy(ble_string, "connected");
+	}
+	else {
+		strcpy(ble_string, "connected");
+	}
+
+	updateFlexContainer(l1_state_string, l2_state_string, ble_string);
 }
 
 void set_yellow_led() {
