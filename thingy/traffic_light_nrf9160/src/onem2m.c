@@ -21,6 +21,9 @@ char aeurl[aei_LENGTH];
 #define flexident_LENGTH 100
 char flexident[flexident_LENGTH]; 
 
+#define PCH_LENGTH 100
+char pchurl[PCH_LENGTH];
+
 void init_oneM2M() {
     // Call this at startup
     memset(acpi, 0, ACPI_LENGTH);
@@ -663,9 +666,224 @@ bool update_flex_container(char* l1s, char* l2s, char* bts) {
     free_json_response(j);
     give_http_sem();
     return true;
+}
 
 
-    //parse returned payload to check if changes were correctly recived
+
+void createPCH() {
+    /// @brief Attempts to create an PCH on the CSE
+
+    LOG_INF("Creating PCH");
+    
+    //create headers needed for the creation of ACP
+    const char* headers[] = {
+        "Content-Type: application/json;ty=15\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    //create payload
+    char payload[400];
+    memset(payload, 0, 400);
+    sprintf(payload, "{\
+        \"m2m:pch\": {\
+        }\
+    }");
+
+
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"/%s", aeurl);
+    int response_length = post_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if PCH is already created");
+        give_http_sem();
+        return NULL;
+    }
     
 
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* acp = cJSON_GetObjectItemCaseSensitive(j, "m2m:pch");
+        if (cJSON_IsObject(acp))
+        {
+            const cJSON* ri = cJSON_GetObjectItemCaseSensitive(acp, "ri");
+            if (cJSON_IsString(ri) && (ri->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(pchurl, ri->valuestring, PCH_LENGTH);
+                LOG_INF("Created PCH, pchurl=%s", pchurl);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_ERR("Failed to find \"m2m:pch\" JSON field!");
+        }
+        
+    }
+    free_json_response(j);
+
+    give_http_sem();
+    return;
 }
+
+
+bool retrievePCH() {
+    LOG_INF("Checking to see if PCH is already created");
+
+    //create headers for get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create URL 
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"id-in?fu=1&drt=2&ty=15&pi=%s", aeurl);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if PCH is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        //the AE was found. take the information we need from it
+        const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
+        if (cJSON_GetArraySize(ae) != 0)
+        {
+            const cJSON* aei = cJSON_GetArrayItem(ae, 0);
+            if (cJSON_IsString(aei) && (aei->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(pchurl, &aei->valuestring[7], PCH_LENGTH);
+                LOG_INF("Found PCH identity, pchurl=%s", pchurl);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_INF("There is no matching PCH found");
+            free_json_response(j);
+            give_http_sem();
+            return false;
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return true;
+}
+
+
+void createSUB() {
+    /// @brief Attempts to create an SUB on the CSE
+
+    LOG_INF("Creating SUB");
+    
+    //create headers needed for the creation of ACP
+    const char* headers[] = {
+        "Content-Type: application/json;ty=23\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    //create payload
+    char payload[400];
+    memset(payload, 0, 400);
+    sprintf(payload, "{\
+        \"m2m:sub\": {\
+            \"acpi\": [\
+                \"%s\"\
+            ],\
+            \"nu\": [\
+                \"%s\"\
+            ],\
+            \"rn\": \"%sSUB\",\
+            \"nct\": 1,\
+            \"enc\": {\
+                \"net\": [\
+                    1\
+                ]\
+            }\
+        }\
+    }", acpi, M2M_ORIGINATOR, M2M_ORIGINATOR);
+
+
+
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"/%s", flexident);
+    int response_length = post_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if SUB is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    give_http_sem();
+
+    LOG_INF("Created SUB");
+
+    return;
+}
+
+
+bool retrieveSUB() {
+    LOG_INF("Checking to see if SUB is already created");
+
+    //create headers for get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create URL 
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"id-in?fu=1&drt=2&ty=23&rn=%sSUB", M2M_ORIGINATOR);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if SUB is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        //the AE was found. take the information we need from it
+        const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
+        if (cJSON_GetArraySize(ae) != 0)
+        {
+            LOG_INF("There is SUB");
+            free_json_response(j);
+            give_http_sem();
+            return true;
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    LOG_INF("There is NO SUB");
+    return false;
+}
+

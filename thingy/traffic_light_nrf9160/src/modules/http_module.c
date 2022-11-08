@@ -361,22 +361,37 @@ static bool app_event_handler(const struct app_event_header *aeh)
 					createACP();
 					createAE();
 					createFlexContainer();
+					createPCH();
+					createSUB();
 				}
 				else {
 
 					if(!(retrieveAE())){
 						createAE();
 						createFlexContainer();
+						createPCH();
+						createSUB();
 					}
 					else{
 						if(!(retrieveFlexContainer())){
 							createFlexContainer();
+							createPCH();
+							createSUB();
 						}
 						else{
-						char* newl1s = "red";
-						char* newl2s = "red";
-						char* newbts = "disconnected";
-						update_flex_container(newl1s, newl2s, newbts);
+							char* newl1s = "red";
+							char* newl2s = "red";
+							char* newbts = "disconnected";
+							update_flex_container(newl1s, newl2s, newbts);
+							if(!(retrievePCH())){
+								createPCH();
+								createSUB();
+							}
+							else{
+								if(!(retrieveSUB())){
+									createSUB();
+								}
+							}
 
 						}
 					}
