@@ -79,30 +79,20 @@ ttk.Button(mainframe,
 	text="createDataModel",
 	command=lambda: run_command("createDataModel")).grid(column=4, row=3, sticky=W)
 
-# Create a button that says allows us to run command "createDataModel"
-ttk.Button(mainframe,
-	text="createDataModel",
-	command=lambda: run_command("createDataModel")).grid(column=4, row=4, sticky=W)
-
 # Create a button that says allows us to run command "retrieveNotifications"
 ttk.Button(mainframe,
 	text="retrieveNotifications",
 	command=lambda: run_command("retrieveNotifications")).grid(column=5, row=1, sticky=W)
 
-# Create a button that says allows us to run command "retrieveNotifications"
-ttk.Button(mainframe,
-	text="retrieveNotifications",
-	command=lambda: run_command("retrieveNotifications")).grid(column=5, row=2, sticky=W)
-
 # Create a button that says allows us to run command "updateDataModel"
 ttk.Button(mainframe,
 	text="updateDataModel",
-	command=lambda: run_command("updateDataModel")).grid(column=5, row=3, sticky=W)
+	command=lambda: run_command("updateDataModel")).grid(column=5, row=2, sticky=W)
 
 # Create a button that says allows us to run command "deregister"
 ttk.Button(mainframe,
 	text="deregister",
-	command=lambda: run_command("deregister")).grid(column=5, row=4, sticky=W)
+	command=lambda: run_command("deregister")).grid(column=5, row=3, sticky=W)
 
 # Widget to modify the sleep time between each command
 sleep_time = StringVar()
