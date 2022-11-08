@@ -544,3 +544,126 @@ void get_flex_container() {
     give_http_sem();
     return;
 }
+
+
+bool update_flex_container(char* l1s, char* l2s, char* bts) {
+    LOG_INF("Updating Flex Container");
+
+    //need to create headers for the get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    //create payload
+    char payload[400];
+    memset(payload, 0, 400);
+    sprintf(payload, "{\
+        \"traffic:trfint\": {\
+            \"l1s\": \"%s\",\
+            \"l2s\": \"%s\",\
+            \"bts\": \"%s\"\
+        }\
+    }", l1s, l2s, bts);
+
+
+    // make post request
+    take_http_sem();
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"/%s", flexident);
+    int response_length = post_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to create Flex Container!");
+        give_http_sem();
+        return false;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
+        if (cJSON_IsObject(flex))
+        {
+            //have the data from the flex container. parse the data out
+
+            //parse light one status
+            const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
+            if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
+            {
+                //compare and make sure light 1 was correctly updated
+                if (strcmp(lOne->valuestring, l1s) == 0){
+                     LOG_INF("Light 1 status correctly updated. Current status: %s", lOne->valuestring);
+                }
+                else {
+                    LOG_INF("Light 1 status NOT correctly updated. Current status: %s", lOne->valuestring);
+                    free_json_response(j);
+                    give_http_sem();
+                    return false;
+                }
+            }
+            else {
+                LOG_ERR("Failed to find \"l1s\" JSON field!");
+            }
+
+
+            //parse light two status
+            const cJSON* ltwo = cJSON_GetObjectItemCaseSensitive(flex, "l2s");
+            if (cJSON_IsString(ltwo) && (ltwo->valuestring != NULL))
+            {
+                //compare and make sure light 2 was correctly updated
+                if (strcmp(ltwo->valuestring, l2s) == 0){
+                     LOG_INF("Light 2 status correctly updated. Current status: %s", ltwo->valuestring);
+                }
+                else {
+                    LOG_INF("Light 2 status NOT correctly updated. Current status: %s", ltwo->valuestring);
+                    free_json_response(j);
+                    give_http_sem();
+                    return false;
+                }
+            }
+            else {
+                LOG_ERR("Failed to find \"l2s\" JSON field!");
+            }
+
+
+            //parse bluetooth status
+            const cJSON* bluestatus = cJSON_GetObjectItemCaseSensitive(flex, "bts");
+            if (cJSON_IsString(bluestatus) && (bluestatus->valuestring != NULL))
+            {
+                //compare and make sure light 2 was correctly updated
+                if (strcmp(bluestatus->valuestring, bts) == 0){
+                     LOG_INF("Light 2 status correctly updated. Current status: %s", bluestatus->valuestring);
+                }
+                else {
+                    LOG_INF("Light 2 status NOT correctly updated. Current status: %s", bluestatus->valuestring);
+                    free_json_response(j);
+                    give_http_sem();
+                    return false;
+                }
+            }
+            else {
+                LOG_ERR("Failed to find \"bts\" JSON field!");
+            }
+
+
+        }
+        else {
+            LOG_ERR("Failed to find \"traffic:trfint\" JSON field!");
+            free_json_response(j);
+            give_http_sem();
+            return false;
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return true;
+
+
+    //parse returned payload to check if changes were correctly recived
+    
+
+}

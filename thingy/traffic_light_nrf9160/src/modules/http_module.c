@@ -344,6 +344,21 @@ static bool app_event_handler(const struct app_event_header *aeh)
 						}
 					}
 				}
+
+
+
+				get_flex_container();
+
+				
+				char* newl1s = "green";
+				char* newl2s = "green";
+				char* newbts = "connected";
+
+				update_flex_container(newl1s, newl2s, newbts);
+
+				get_flex_container();
+
+
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {

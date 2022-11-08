@@ -20,6 +20,7 @@ bool retrieveFlexContainer();
 int createCIN(char* parentID, char* content, char* label);
 void retrieveCIN(char* parentID, char* CNTName);
 void get_flex_container();
+bool update_flex_container(char* l1s, char* l2s, char* bts);
 
 
 #endif // TRAFFIC_LIGHT_NRF9160_ONEM2M_H_
