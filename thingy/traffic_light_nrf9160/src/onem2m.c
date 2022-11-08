@@ -33,7 +33,6 @@ void init_oneM2M() {
 
 void createACP() {
     /// @brief Attempts to create an ACP on the CSE
-
     LOG_INF("Creating ACP");
     
     //create headers needed for the creation of ACP
@@ -95,12 +94,10 @@ void createACP() {
         
     }
     free_json_response(j);
-
     give_http_sem();
 }
 
-
-bool retrieveACP() {
+bool discoverACP() {
     LOG_INF("Checking to see if ACP is already created");
 
     //create headers for get request
@@ -155,9 +152,7 @@ bool retrieveACP() {
 }
 
 char* createAE() {
-
     LOG_INF("Creating AE");
-    
     //create headers needed for the creation of AE
     const char* headers[] = {
         "Content-Type: application/json;ty=2\r\n",
@@ -166,7 +161,6 @@ char* createAE() {
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
         NULL};
-
 
     char payload[400];
     memset(payload, 0, 400);
@@ -216,15 +210,12 @@ char* createAE() {
         
     }
     free_json_response(j);
-
     give_http_sem();
-
     LOG_INF("Created AE");
-
     return NULL;
 }
 
-bool retrieveAE() {
+bool discoverAE() {
     LOG_INF("Checking to see if AE is already created");
 
     //create headers for get request
@@ -271,27 +262,17 @@ bool retrieveAE() {
             give_http_sem();
             return false;
         }
-        
     }
     free_json_response(j);
     give_http_sem();
     return true;
 }
 
-int deleteAE(char* resourceName) {
+int deleteAE(const char* resourceName) {
     return 0;
 }
 
-char* createContainer(char* resourceName, char* parentID, int mni, char* acpi) {
-    return NULL;
-}
-
-char* retrieveContainer(char* resourceName, char* parentID) {
-    return NULL;
-}
-
 char* createFlexContainer() {
-
     LOG_INF("Creating Flex Container");
     
     //create headers needed for the creation of AE
@@ -320,8 +301,6 @@ char* createFlexContainer() {
         }\
     }", acpi);
 
-
-
     // make post request
     take_http_sem();
     char flexURL[51];
@@ -333,7 +312,6 @@ char* createFlexContainer() {
         give_http_sem();
         return NULL;
     }
-
 
     cJSON* j = parse_json_response();
     if (j != NULL) {
@@ -357,15 +335,12 @@ char* createFlexContainer() {
         
     }
     free_json_response(j);
-
     give_http_sem();
-
     LOG_INF("Created Flex Container");
-
     return NULL;
 }
 
-bool retrieveFlexContainer() {
+bool discoverFlexContainer() {
     LOG_INF("Checking to see if flex container is already created");
 
     //create headers for get request
@@ -412,58 +387,13 @@ bool retrieveFlexContainer() {
             give_http_sem();
             return false;
         }
-        
     }
     free_json_response(j);
     give_http_sem();
     return true;
 }
 
-int createCIN(char* parentID, char* content, char* label) {
-    return 0;
-}
-
-void retrieveCIN(char* parentID, char* CNTName) {
-    return;
-}
-
-
-/*
-    // Example code for parsing JSON response from an HTTP response, based off of: https://github.com/DaveGamble/cJSON#parsing-json
-    // Example response from web server: { "light1":"yellow", "light2": "red" }
-
-    cJSON *parsed_json = cJSON_ParseWithLength(http_rx_body_start, http_content_length);
-    if (parsed_json == NULL)
-    {
-        LOG_ERR("Failed to parse light state from HTTP response!\nRESPONSE START\n%s\nRESPONSE END", http_rx_body_start);
-        const char *error_ptr = cJSON_GetErrorPtr();
-        if (error_ptr != NULL)
-        {
-            LOG_ERR("Error before: %s\n", error_ptr);
-        }
-    }
-    else {
-        const cJSON* light1_json = cJSON_GetObjectItemCaseSensitive(parsed_json, "light1");
-        if (cJSON_IsString(light1_json) && (light1_json->valuestring != NULL))
-        {
-            struct ae_event* light_event = new_ae_event();
-            light_event->cmd = AE_EVENT_LIGHT_CMD;
-            light_event->target_light = AE_LIGHT1;
-            light_event->new_light_state = string_to_light_state(light1_json->valuestring, 10);
-            APP_EVENT_SUBMIT(light_event);
-        }
-        else {
-            LOG_ERR("Failed to parse \"light1\" JSON field!");
-        }
-    }
-
-    cJSON_Delete(parsed_json);
-
-*/
-
-
-
-void get_flex_container() {
+void retrieveFlexContainer() {
     LOG_INF("getting contents of the flex container");
 
     //need to create headers for the get request
@@ -488,14 +418,12 @@ void get_flex_container() {
     }
 
     //parse the response
-    
     cJSON* j = parse_json_response();
     if (j != NULL) {
         const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
         if (cJSON_IsObject(flex))
         {
             //have the data from the flex container. parse the data out
-
             //parse light one status
             const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
             if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
@@ -522,36 +450,17 @@ void get_flex_container() {
             else {
                 LOG_ERR("Failed to find \"l2s\" JSON field!");
             }
-
-
-            //parse bluetooth status
-            const cJSON* blueStat = cJSON_GetObjectItemCaseSensitive(flex, "bts");
-            if (cJSON_IsString(blueStat) && (blueStat->valuestring != NULL))
-            {
-                //Do something with the data
-                LOG_INF("Got bluetooth status: %s", blueStat->valuestring);
-
-                
-            }
-            else {
-                LOG_ERR("Failed to find \"bts\" JSON field!");
-            }
-
-
-
         }
         else {
             LOG_ERR("Failed to find \"traffic:trfint\" JSON field! In Get function");
         }
-        
     }
     free_json_response(j);
     give_http_sem();
     return;
 }
 
-
-bool update_flex_container(char* l1s, char* l2s, char* bts) {
+bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
     LOG_INF("Updating Flex Container");
 
     //need to create headers for the get request
@@ -574,7 +483,6 @@ bool update_flex_container(char* l1s, char* l2s, char* bts) {
         }\
     }", l1s, l2s, bts);
 
-
     // make post request
     take_http_sem();
     char URL[51];
@@ -582,97 +490,17 @@ bool update_flex_container(char* l1s, char* l2s, char* bts) {
     sprintf(URL,"/%s", flexident);
     int response_length = put_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
     if (response_length <= 0) {
-        LOG_ERR("Failed to create Flex Container!");
+        LOG_ERR("Failed to update Flex Container!");
         give_http_sem();
         return false;
     }
 
-    cJSON* j = parse_json_response();
-    if (j != NULL) {
-        const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
-        if (cJSON_IsObject(flex))
-        {
-            //have the data from the flex container. parse the data out
-
-            //parse light one status
-            const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
-            if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
-            {
-                //compare and make sure light 1 was correctly updated
-                if (strcmp(lOne->valuestring, l1s) == 0){
-                     LOG_INF("Light 1 status correctly updated. Current status: %s", lOne->valuestring);
-                }
-                else {
-                    LOG_INF("Light 1 status NOT correctly updated. Current status: %s", lOne->valuestring);
-                    free_json_response(j);
-                    give_http_sem();
-                    return false;
-                }
-            }
-            else {
-                LOG_ERR("Failed to find \"l1s\" JSON field!");
-            }
-
-
-            //parse light two status
-            const cJSON* ltwo = cJSON_GetObjectItemCaseSensitive(flex, "l2s");
-            if (cJSON_IsString(ltwo) && (ltwo->valuestring != NULL))
-            {
-                //compare and make sure light 2 was correctly updated
-                if (strcmp(ltwo->valuestring, l2s) == 0){
-                     LOG_INF("Light 2 status correctly updated. Current status: %s", ltwo->valuestring);
-                }
-                else {
-                    LOG_INF("Light 2 status NOT correctly updated. Current status: %s", ltwo->valuestring);
-                    free_json_response(j);
-                    give_http_sem();
-                    return false;
-                }
-            }
-            else {
-                LOG_ERR("Failed to find \"l2s\" JSON field!");
-            }
-
-
-            //parse bluetooth status
-            const cJSON* bluestatus = cJSON_GetObjectItemCaseSensitive(flex, "bts");
-            if (cJSON_IsString(bluestatus) && (bluestatus->valuestring != NULL))
-            {
-                //compare and make sure light 2 was correctly updated
-                if (strcmp(bluestatus->valuestring, bts) == 0){
-                     LOG_INF("Light 2 status correctly updated. Current status: %s", bluestatus->valuestring);
-                }
-                else {
-                    LOG_INF("Light 2 status NOT correctly updated. Current status: %s", bluestatus->valuestring);
-                    free_json_response(j);
-                    give_http_sem();
-                    return false;
-                }
-            }
-            else {
-                LOG_ERR("Failed to find \"bts\" JSON field!");
-            }
-
-
-        }
-        else {
-            LOG_ERR("Failed to find \"traffic:trfint\" JSON field! In put function");
-            free_json_response(j);
-            give_http_sem();
-            return false;
-        }
-        
-    }
-    free_json_response(j);
     give_http_sem();
     return true;
 }
 
-
-
 void createPCH() {
     /// @brief Attempts to create an PCH on the CSE
-
     LOG_INF("Creating PCH");
     
     //create headers needed for the creation of ACP
@@ -692,7 +520,6 @@ void createPCH() {
         }\
     }");
 
-
     take_http_sem();
     char URL[51];
     memset(URL, 0, 51);
@@ -704,7 +531,6 @@ void createPCH() {
         return NULL;
     }
     
-
     cJSON* j = parse_json_response();
     if (j != NULL) {
         const cJSON* acp = cJSON_GetObjectItemCaseSensitive(j, "m2m:pch");
@@ -732,8 +558,7 @@ void createPCH() {
     return;
 }
 
-
-bool retrievePCH() {
+bool discoverPCH() {
     LOG_INF("Checking to see if PCH is already created");
 
     //create headers for get request
@@ -787,10 +612,8 @@ bool retrievePCH() {
     return true;
 }
 
-
 void createSUB() {
     /// @brief Attempts to create an SUB on the CSE
-
     LOG_INF("Creating SUB");
     
     //create headers needed for the creation of ACP
@@ -823,8 +646,6 @@ void createSUB() {
         }\
     }", acpi, M2M_ORIGINATOR, M2M_ORIGINATOR);
 
-
-
     take_http_sem();
     char URL[51];
     memset(URL, 0, 51);
@@ -837,14 +658,11 @@ void createSUB() {
     }
 
     give_http_sem();
-
     LOG_INF("Created SUB");
-
     return;
 }
 
-
-bool retrieveSUB() {
+bool discoverSUB() {
     LOG_INF("Checking to see if SUB is already created");
 
     //create headers for get request
@@ -886,4 +704,3 @@ bool retrieveSUB() {
     LOG_INF("There is NO SUB");
     return false;
 }
-

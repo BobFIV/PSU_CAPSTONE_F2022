@@ -34,10 +34,9 @@ LOG_MODULE_REGISTER(MODULE);
 // More info: https://docs.zephyrproject.org/3.1.0/kernel/services/synchronization/semaphores.html
 struct k_sem http_request_sem;
 
-static bool http_connected = false;
 // String representation of the resolved IP address
-
 static char resolved_ip_addr[INET6_ADDRSTRLEN];
+
 // HTTP timeout is 10 seconds
 static int32_t HTTP_REQUEST_TIMEOUT = 10 * MSEC_PER_SEC;
 
@@ -50,14 +49,14 @@ static char* http_rx_body_start = 0;
 // Number of bytes long that the HTTP response body is
 static size_t http_content_length = 0;
 
-// Socket used to make http connection
-static int http_socket = -1;
+// HTTP Response status code
+static uint16_t http_response_code = 0;
 
 // Define a heap for parsing and constructing JSON objects using cJSON
 K_HEAP_DEFINE(cjson_heap, 5120);
 
-struct addrinfo *addr_res;
-struct addrinfo addr_hints = {
+static struct addrinfo *addr_res;
+static struct addrinfo addr_hints = {
 	.ai_family = AF_INET,
 	.ai_socktype = SOCK_STREAM
 };
@@ -112,7 +111,7 @@ static void response_cb(struct http_response *rsp,
 			http_rx_body_start = rsp->body_frag_start;
 			http_content_length = rsp->body_frag_len;
 			printk("\n%s\n", http_rx_body_start);
-
+			http_response_code = rsp->http_status;
 		}
 		else {
 			LOG_WRN("No content returned from HTTP request!");
@@ -126,9 +125,25 @@ static void response_cb(struct http_response *rsp,
 static int perform_http_request(struct http_request* req) {
 	int retry_count = 0;
 	int response = 0;
-	bool ok = false;
+	bool http_connected = false;
+
+	int http_socket = -1;
 	while (retry_count < 3) {
+		int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
+		if (reconnect_response < 0) {
+			LOG_ERR("connect_socket() failed!");
+			retry_count++;
+			continue;
+		}
+		else {
+			LOG_INF("HTTP CONNECTED");
+			http_connected = true;
+			break;
+		}
+	}
+	if (http_connected) {
 		response = http_client_req(http_socket, req, HTTP_REQUEST_TIMEOUT, NULL);
+		
 		if (response < 0) {
 			LOG_ERR("http_client_req returned %d !", response);
 			if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
@@ -152,12 +167,13 @@ static int perform_http_request(struct http_request* req) {
 			break;
 		}
 	}
+
 	if (!ok) {
 		LOG_ERR("Retried %d times, quitting request!", retry_count);
 		return -1;
 	}
 
-	return http_content_length;
+	return http_response_code;
 }
 
 // Returns the number of bytes in the response body, or a negative error value
@@ -312,16 +328,6 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 	return err;
 }
 
-static void web_poll() {
-	int result = 0;
-	while (false) {
-		k_sleep(K_SECONDS(1));
-		if (http_connected) {
-			// TODO: Add in code to poll the oneM2M polling channel
-		}
-	}
-}
-
 static bool app_event_handler(const struct app_event_header *aeh)
 {
 	LOG_INF("event");
@@ -356,8 +362,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				LOG_INF("HTTP CONNECTED");
 				http_connected = true;
 
-				// TODO: Add in the oneM2M calls to setup the AE and polling channel.
-				if (!(retrieveACP())) {
+				if (!(discoverACP())) {
 					createACP();
 					createAE();
 					createFlexContainer();
@@ -365,38 +370,36 @@ static bool app_event_handler(const struct app_event_header *aeh)
 					createSUB();
 				}
 				else {
-
-					if(!(retrieveAE())){
+					if(!(discoverAE())){
 						createAE();
 						createFlexContainer();
 						createPCH();
 						createSUB();
 					}
 					else{
-						if(!(retrieveFlexContainer())){
+						if(!(discoverFlexContainer())){
 							createFlexContainer();
 							createPCH();
 							createSUB();
 						}
 						else{
-							char* newl1s = "red";
-							char* newl2s = "red";
-							char* newbts = "disconnected";
-							update_flex_container(newl1s, newl2s, newbts);
 							if(!(retrievePCH())){
 								createPCH();
 								createSUB();
 							}
 							else{
-								if(!(retrieveSUB())){
+								if(!(discoverSUB())){
 									createSUB();
 								}
 							}
-
 						}
 					}
 				}
 			}
+			char* newl1s = "red";
+			char* newl2s = "red";
+			char* newbts = "disconnected";
+			updateFlexContainer(newl1s, newl2s, newbts);
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
 			LOG_INF("Got LTE_DISCONNECTED");
@@ -412,12 +415,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 	/* If event is unhandled, unsubscribe. */
 	__ASSERT_NO_MSG(false);
-
 	return false;
 }
 
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, lte_event);
-
-K_THREAD_DEFINE(web_poll_thread, 5120, web_poll, NULL, NULL, NULL, 10, 0, 0);

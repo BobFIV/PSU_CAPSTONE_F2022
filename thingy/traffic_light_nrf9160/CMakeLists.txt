@@ -19,6 +19,7 @@ target_sources(app PRIVATE
   src/events/modem_module_event.c
   src/events/peer_conn_event.c
   src/events/uart_data_event.c
+  src/events/ut_event.c
 
   src/modules/ae_module.c
   src/modules/at_handler.c

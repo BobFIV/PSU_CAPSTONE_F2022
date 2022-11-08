@@ -8,14 +8,15 @@
 #include <zephyr/pm/device.h>
 #include <string.h>
 
+#include "deployment_settings.h"
+#include "onem2m.h"
+
 #define MODULE traffic_light_ae
 #include <caf/events/module_state_event.h>
 #include "events/lte_event.h"
 #include "events/ble_event.h"
 #include "events/ae_event.h"
 #include "events/led_state_event.h"
-
-#include "deployment_settings.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
@@ -35,7 +36,7 @@ void send_command(const char* cmd) {
 	uart_tx_enqueue((uint8_t*) cmd, strnlen(cmd, 30), 1);
 }
 
-void ble_connection_management_thread() {
+/*void ble_connection_management_thread() {
 	while(true) {
 		k_sleep(K_MSEC(1000));
 		if (!lte_connected) {
@@ -50,6 +51,10 @@ void ble_connection_management_thread() {
 			}
 		}
 	}
+}*/
+
+void push_flex_container() {
+	update_flex_container(light_state_to_string(light1_state), light_state_to_string(light2_state), ble_connected ? "connected" : "disconnected");
 }
 
 void set_yellow_led() {
@@ -179,7 +184,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		else if (event->cmd == BLE_SCAN_STOPPED) {
 			ble_scanning = false;
         }
-
 		return false;
 	}
 
@@ -188,10 +192,11 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			cast_module_state_event(aeh);
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
+			ble_scanning = false;
+			lte_connected = false;
 			send_command("!start_scan" BLE_TARGET ";");
 			set_yellow_led();
 		}
-
 		return false;
 	}
 
@@ -205,6 +210,3 @@ APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
 APP_EVENT_SUBSCRIBE(MODULE, ble_event);
 APP_EVENT_SUBSCRIBE(MODULE, lte_event);
 APP_EVENT_SUBSCRIBE(MODULE, ae_event);
-
-// Giving these threads positive priorities means that they are pre-emptible (ie. other threads with positive priorities will run first)
-K_THREAD_DEFINE(ble_conn_mgr, 2048, ble_connection_management_thread, NULL, NULL, NULL, 7, 0, 0);

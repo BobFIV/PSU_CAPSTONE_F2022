@@ -9,6 +9,8 @@
 
 #include "events/ae_event.h"
 
+static char*[4] light_state_strings = { "none", "off", "green", "yellow", "red" };
+
 enum ae_light_states string_to_light_state(char* str, size_t max_length) {
 	if (strncmp(str, "green", max_length) == 0) {
 		return AE_LIGHT_GREEN;
@@ -23,6 +25,10 @@ enum ae_light_states string_to_light_state(char* str, size_t max_length) {
 		return AE_LIGHT_OFF;
 	}
 	return AE_LIGHT_STATE_NONE;
+}
+
+void light_state_to_string(enum ae_light_states state, char* output) {
+	output = light_state_strings[state];
 }
 
 static void log_ae_event(const struct app_event_header *aeh)
