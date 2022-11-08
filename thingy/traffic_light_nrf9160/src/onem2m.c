@@ -110,6 +110,7 @@ bool retrieveACP() {
         NULL};
     
     //create URL 
+    take_http_sem();
     char URL[51];
     memset(URL, 0, 51);
     sprintf(URL,"id-in?fu=1&drt=2&ty=1&rn=%s-ACP", M2M_ORIGINATOR);
@@ -231,7 +232,8 @@ bool retrieveAE() {
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
         NULL};
-    
+
+    take_http_sem();
     //create URL 
     char URL[51];
     memset(URL, 0, 51);
@@ -373,6 +375,7 @@ bool retrieveFlexContainer() {
         NULL};
     
     //create URL 
+    take_http_sem();
     char URL[51];
     memset(URL, 0, 51);
     sprintf(URL,"id-in?fu=1&drt=2&ty=28&pi=%s", aeurl);
@@ -454,3 +457,90 @@ void retrieveCIN(char* parentID, char* CNTName) {
     cJSON_Delete(parsed_json);
 
 */
+
+
+
+void get_flex_container() {
+    LOG_INF("getting contents of the flex container");
+
+    //need to create headers for the get request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create a url that targest the flex container
+    char URL[51];
+    memset(URL, 0, 51);
+    sprintf(URL,"/%s", flexident);
+    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    if (response_length <= 0) {
+        LOG_ERR("Failed to check if flex container is already created");
+        give_http_sem();
+        return NULL;
+    }
+
+    //parse the response
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
+        if (cJSON_IsObject(flex))
+        {
+            //have the data from the flex container. parse the data out
+
+            //parse light one status
+            const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
+            if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
+            {
+                //Do something with the data
+                LOG_INF("Got light 1s status: %s", lOne->valuestring);
+
+                
+            }
+            else {
+                LOG_ERR("Failed to find \"l1s\" JSON field!");
+            }
+
+
+            //parse light two status
+            const cJSON* lTwo = cJSON_GetObjectItemCaseSensitive(flex, "l2s");
+            if (cJSON_IsString(lTwo) && (lTwo->valuestring != NULL))
+            {
+                //Do something with the data
+                LOG_INF("Got light 2s status: %s", lTwo->valuestring);
+
+                
+            }
+            else {
+                LOG_ERR("Failed to find \"l2s\" JSON field!");
+            }
+
+
+            //parse bluetooth status
+            const cJSON* blueStat = cJSON_GetObjectItemCaseSensitive(flex, "bts");
+            if (cJSON_IsString(blueStat) && (blueStat->valuestring != NULL))
+            {
+                //Do something with the data
+                LOG_INF("Got bluetooth status: %s", blueStat->valuestring);
+
+                
+            }
+            else {
+                LOG_ERR("Failed to find \"bts\" JSON field!");
+            }
+
+
+
+        }
+        else {
+            LOG_ERR("Failed to find \"traffic:trfint\" JSON field!");
+        }
+        
+    }
+    free_json_response(j);
+    give_http_sem();
+    return;
+}
