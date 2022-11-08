@@ -219,6 +219,36 @@ int post_request(char* host, char* url, char* payload, size_t payload_size, cons
 		return perform_http_request(&req);
 }
 
+int put_request(char* host, char* url, char* payload, size_t payload_size, const char** headers) {
+		// !!! WARNING !!!
+		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
+		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
+		//
+
+		if (!http_connected) {
+			LOG_WRN("Attempted to call put_request %s when http_connected is false!", url);
+			return -1;
+		}
+
+		// Clear out the response buffer
+		memset(&http_rx_buf, 0, HTTP_RX_BUF_SIZE);
+		// Create a new request
+		struct http_request req;
+		memset(&req, 0, sizeof(req));
+		req.method = HTTP_PUT;
+		req.url = url;
+		req.host = host;
+		req.protocol = "HTTP/1.1";
+		req.response = response_cb;
+		req.payload = payload;
+		req.payload_len = payload_size;
+		req.recv_buf = &http_rx_buf[0];
+		req.recv_buf_len = HTTP_RX_BUF_SIZE;
+		req.header_fields = headers;
+
+		return perform_http_request(&req);
+}
+
 cJSON* parse_json_response() {
 	// Only call this if you have already acquired the http_rx_sem
 	// Once you are done manipulating the JSON, call free_json_response
@@ -349,7 +379,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 				get_flex_container();
 
-				
+
 				char* newl1s = "green";
 				char* newl2s = "green";
 				char* newbts = "connected";

@@ -473,6 +473,7 @@ void get_flex_container() {
         NULL};
     
     //create a url that targest the flex container
+    take_http_sem();
     char URL[51];
     memset(URL, 0, 51);
     sprintf(URL,"/%s", flexident);
@@ -484,6 +485,7 @@ void get_flex_container() {
     }
 
     //parse the response
+    
     cJSON* j = parse_json_response();
     if (j != NULL) {
         const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
@@ -536,7 +538,7 @@ void get_flex_container() {
 
         }
         else {
-            LOG_ERR("Failed to find \"traffic:trfint\" JSON field!");
+            LOG_ERR("Failed to find \"traffic:trfint\" JSON field! In Get function");
         }
         
     }
@@ -575,7 +577,7 @@ bool update_flex_container(char* l1s, char* l2s, char* bts) {
     char URL[51];
     memset(URL, 0, 51);
     sprintf(URL,"/%s", flexident);
-    int response_length = post_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    int response_length = put_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to create Flex Container!");
         give_http_sem();
@@ -651,7 +653,7 @@ bool update_flex_container(char* l1s, char* l2s, char* bts) {
 
         }
         else {
-            LOG_ERR("Failed to find \"traffic:trfint\" JSON field!");
+            LOG_ERR("Failed to find \"traffic:trfint\" JSON field! In put function");
             free_json_response(j);
             give_http_sem();
             return false;

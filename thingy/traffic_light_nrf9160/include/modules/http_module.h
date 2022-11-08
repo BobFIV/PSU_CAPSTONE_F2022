@@ -17,6 +17,13 @@ int get_request(char* host, char* url, const char** headers);
 // @param payload_size - Length of the payload in bytes
 int post_request(char* host, char* url, char* payload, size_t payload_size, const char** headers);
 
+// Performs an HTTP PUT request
+// @param host - String representing the host name/IP address/domain name (ie. www.example.com or 8.8.8.8)
+// @param url - String representing the URL path (ie. /index.html)
+// @param payload - Payload to put in the PUT request
+// @param payload_size - Length of the payload in bytes
+int put_request(char* host, char* url, char* payload, size_t payload_size, const char** headers);
+
 void take_http_sem();
 void give_http_sem();
 
