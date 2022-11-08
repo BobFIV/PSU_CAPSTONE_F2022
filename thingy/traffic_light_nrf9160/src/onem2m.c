@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel.h>
@@ -6,8 +7,10 @@
 #include <cJSON.h>
 
 #include "onem2m.h"
+#include "onem2m_payloads.h"
 #include "deployment_settings.h"
 #include "modules/http_module.h"
+#include "events/ae_event.h"
 
 LOG_MODULE_REGISTER(oneM2M, LOG_LEVEL_INF);
 
@@ -18,11 +21,21 @@ char acpi[ACPI_LENGTH];
 #define aei_LENGTH 50
 char aeurl[aei_LENGTH];
 
-#define flexident_LENGTH 100
+#define flexident_LENGTH 50
 char flexident[flexident_LENGTH]; 
 
-#define PCH_LENGTH 100
+#define PCH_LENGTH 50
 char pchurl[PCH_LENGTH];
+
+#define RQI_LENGTH 50
+char rqi_value[RQI_LENGTH];
+const char* rqi_header = rqi_value;
+
+#define MAX_ONEM2M_REQUEST_PAYLOAD_SIZE 2048
+static char onem2m_request_payload[MAX_ONEM2M_REQUEST_PAYLOAD_SIZE];
+
+#define MAX_ONEM2M_URL_SIZE 200
+static char onem2m_url_buffer[MAX_ONEM2M_URL_SIZE];
 
 void init_oneM2M() {
     // Call this at startup
@@ -31,41 +44,62 @@ void init_oneM2M() {
     memset(flexident, 0, flexident_LENGTH);
 }
 
+void clear_onem2m_request_payload() {
+    memset(onem2m_request_payload, 0, MAX_ONEM2M_REQUEST_PAYLOAD_SIZE);
+}
+
+void clear_onem2m_url_buffer() {
+    memset(onem2m_url_buffer, 0, MAX_ONEM2M_URL_SIZE);
+}
+
+void updateLightStatesFromJSON(const cJSON* flex) {
+    struct ae_event* v = new_ae_event();
+    v->cmd = AE_EVENT_LIGHT_CMD;
+    
+    //have the data from the flex container. parse the data out
+    //parse light one status
+    const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
+    if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
+    {
+        //Do something with the data
+        LOG_INF("Got light 1s status: %s", lOne->valuestring);
+        v->new_light1_state = string_to_light_state(lOne->valuestring, strlen(lOne->valuestring));
+    }
+    else {
+        LOG_ERR("Failed to find \"l1s\" JSON field!");
+    }
+
+    //parse light two status
+    const cJSON* lTwo = cJSON_GetObjectItemCaseSensitive(flex, "l2s");
+    if (cJSON_IsString(lTwo) && (lTwo->valuestring != NULL))
+    {
+        //Do something with the data
+        LOG_INF("Got light 2s status: %s", lTwo->valuestring);
+        v->new_light2_state = string_to_light_state(lTwo->valuestring, strlen(lTwo->valuestring));
+    }
+    else {
+        LOG_ERR("Failed to find \"l2s\" JSON field!");
+    }
+    APP_EVENT_SUBMIT(v);
+}
+
 void createACP() {
     /// @brief Attempts to create an ACP on the CSE
     LOG_INF("Creating ACP");
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=1\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
         NULL};
-
-    //Create the payload to send to the ACME server
-    char payload[] = "{\
-        \"m2m:acp\": { \
-            \"rn\": \"" M2M_ORIGINATOR "-ACP\",\
-            \"pv\": {\
-                \"acr\": [\
-                    {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
-                    {\"acor\": [\"" M2M_ORIGINATOR "\"], \"acop\": 63}\
-                ]\
-            },\
-            \"pvs\": {\
-                \"acr\": [\
-                    {\"acor\": [\"Cdashboard\"], \"acop\": 63},\
-                    {\"acor\": [\"" M2M_ORIGINATOR "\"], \"acop\": 63}\
-                ]\
-            }\
-        }\
-    }";
     
     // make post request
     take_http_sem();
-    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
+    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", acp_create_payload, strlen(acp_create_payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to create ACP!");
         give_http_sem();
@@ -102,6 +136,7 @@ bool discoverACP() {
 
     //create headers for get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -111,10 +146,9 @@ bool discoverACP() {
     
     //create URL 
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"id-in?fu=1&drt=2&ty=1&rn=%s-ACP", M2M_ORIGINATOR);
-    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=1&rn=%s-ACP", M2M_ORIGINATOR);
+    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if ACP is already created");
         give_http_sem();
@@ -155,6 +189,7 @@ char* createAE() {
     LOG_INF("Creating AE");
     //create headers needed for the creation of AE
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=2\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -162,26 +197,13 @@ char* createAE() {
         "X-M2M-RVI: 3\r\n",
         NULL};
 
-    char payload[400];
-    memset(payload, 0, 400);
     //Create the payload to send to the ACME server
-    sprintf(payload, "{\
-        \"m2m:ae\": {\
-            \"acpi\": [\
-                \"%s\"\
-            ],\
-            \"api\": \"NtrafficAPI\",\
-            \"rn\": \"intersection" DEVICE_LETTER "\",\
-            \"srv\": [\
-                \"3\"\
-            ],\
-            \"rr\": false\
-        }\
-    }", acpi);
+    clear_onem2m_request_payload();
+    sprintf(onem2m_request_payload, ae_create_payload, acpi);
     
     // make post request
     take_http_sem();
-    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", payload, strlen(payload), headers);
+    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", onem2m_request_payload, strlen(onem2m_request_payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to create AE!");
         give_http_sem();
@@ -220,6 +242,7 @@ bool discoverAE() {
 
     //create headers for get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -229,10 +252,9 @@ bool discoverAE() {
 
     take_http_sem();
     //create URL 
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"id-in?fu=1&drt=2&ty=2&rn=intersection%s", DEVICE_LETTER);
-    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=2&rn=intersection%s", DEVICE_LETTER);
+    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if AE is already created");
         give_http_sem();
@@ -277,6 +299,7 @@ char* createFlexContainer() {
     
     //create headers needed for the creation of AE
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=28\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -284,29 +307,15 @@ char* createFlexContainer() {
         "X-M2M-RVI: 3\r\n",
         NULL};
 
-
-    char payload[400];
-    memset(payload, 0, 400);
     //Create the payload to send to the ACME server
-    sprintf(payload, "{\
-        \"traffic:trfint\": {\
-            \"acpi\": [\
-                \"%s\"\
-            ],\
-            \"cnd\": \"edu.psu.cse.traffic.trafficLightIntersection\",\
-            \"rn\": \"intersection\",\
-            \"l1s\": \"red\",\
-            \"l2s\": \"red\",\
-            \"bts\": \"disconnected\"\
-        }\
-    }", acpi);
+    clear_onem2m_request_payload();
+    sprintf(onem2m_request_payload, flex_container_create_payload, acpi);
 
     // make post request
     take_http_sem();
-    char flexURL[51];
-    memset(flexURL, 0, 51);
-    sprintf(flexURL,"/%s", aeurl);
-    int response_length = post_request(ENDPOINT_HOSTNAME, flexURL, payload, strlen(payload), headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", aeurl);
+    int response_length = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to create Flex Container!");
         give_http_sem();
@@ -345,6 +354,7 @@ bool discoverFlexContainer() {
 
     //create headers for get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -354,10 +364,9 @@ bool discoverFlexContainer() {
     
     //create URL 
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"id-in?fu=1&drt=2&ty=28&pi=%s", aeurl);
-    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=28&pi=%s", aeurl);
+    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if flex container is already created");
         give_http_sem();
@@ -398,6 +407,7 @@ void retrieveFlexContainer() {
 
     //need to create headers for the get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -407,14 +417,13 @@ void retrieveFlexContainer() {
     
     //create a url that targest the flex container
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"/%s", flexident);
-    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", flexident);
+    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if flex container is already created");
         give_http_sem();
-        return NULL;
+        return;
     }
 
     //parse the response
@@ -423,33 +432,7 @@ void retrieveFlexContainer() {
         const cJSON* flex = cJSON_GetObjectItemCaseSensitive(j, "traffic:trfint");
         if (cJSON_IsObject(flex))
         {
-            //have the data from the flex container. parse the data out
-            //parse light one status
-            const cJSON* lOne = cJSON_GetObjectItemCaseSensitive(flex, "l1s");
-            if (cJSON_IsString(lOne) && (lOne->valuestring != NULL))
-            {
-                //Do something with the data
-                LOG_INF("Got light 1s status: %s", lOne->valuestring);
-
-                
-            }
-            else {
-                LOG_ERR("Failed to find \"l1s\" JSON field!");
-            }
-
-
-            //parse light two status
-            const cJSON* lTwo = cJSON_GetObjectItemCaseSensitive(flex, "l2s");
-            if (cJSON_IsString(lTwo) && (lTwo->valuestring != NULL))
-            {
-                //Do something with the data
-                LOG_INF("Got light 2s status: %s", lTwo->valuestring);
-
-                
-            }
-            else {
-                LOG_ERR("Failed to find \"l2s\" JSON field!");
-            }
+            updateLightStatesFromJSON(flex);
         }
         else {
             LOG_ERR("Failed to find \"traffic:trfint\" JSON field! In Get function");
@@ -465,6 +448,7 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
 
     //need to create headers for the get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -473,9 +457,8 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
         NULL};
 
     //create payload
-    char payload[400];
-    memset(payload, 0, 400);
-    sprintf(payload, "{\
+    clear_onem2m_request_payload();
+    sprintf(onem2m_request_payload, "{\
         \"traffic:trfint\": {\
             \"l1s\": \"%s\",\
             \"l2s\": \"%s\",\
@@ -485,10 +468,9 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
 
     // make post request
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"/%s", flexident);
-    int response_length = put_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", flexident);
+    int response_length = put_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to update Flex Container!");
         give_http_sem();
@@ -505,6 +487,7 @@ void createPCH() {
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=15\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -513,22 +496,16 @@ void createPCH() {
         NULL};
 
     //create payload
-    char payload[400];
-    memset(payload, 0, 400);
-    sprintf(payload, "{\
-        \"m2m:pch\": {\
-        }\
-    }");
+    char* create_pch_payload = "{\"m2m:pch\": {}}";
 
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"/%s", aeurl);
-    int response_length = post_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", aeurl);
+    int response_length = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, create_pch_payload, strlen(create_pch_payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if PCH is already created");
         give_http_sem();
-        return NULL;
+        return;
     }
     
     cJSON* j = parse_json_response();
@@ -563,6 +540,7 @@ bool discoverPCH() {
 
     //create headers for get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -572,10 +550,9 @@ bool discoverPCH() {
     
     //create URL 
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"id-in?fu=1&drt=2&ty=15&pi=%s", aeurl);
-    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=15&pi=%s", aeurl);
+    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if PCH is already created");
         give_http_sem();
@@ -618,6 +595,7 @@ void createSUB() {
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=23\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -647,14 +625,13 @@ void createSUB() {
     }", acpi, M2M_ORIGINATOR, M2M_ORIGINATOR);
 
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"/%s", flexident);
-    int response_length = post_request(ENDPOINT_HOSTNAME, URL, payload, strlen(payload), headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", flexident);
+    int response_length = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, payload, strlen(payload), headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if SUB is already created");
         give_http_sem();
-        return NULL;
+        return;
     }
 
     give_http_sem();
@@ -667,6 +644,7 @@ bool discoverSUB() {
 
     //create headers for get request
     const char* headers[] = {
+        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -676,14 +654,13 @@ bool discoverSUB() {
     
     //create URL 
     take_http_sem();
-    char URL[51];
-    memset(URL, 0, 51);
-    sprintf(URL,"id-in?fu=1&drt=2&ty=23&rn=%sSUB", M2M_ORIGINATOR);
-    int response_length = get_request(ENDPOINT_HOSTNAME, URL, headers);
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=23&rn=%sSUB", M2M_ORIGINATOR);
+    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
     if (response_length <= 0) {
         LOG_ERR("Failed to check if SUB is already created");
         give_http_sem();
-        return NULL;
+        return false;
     }
 
     cJSON* j = parse_json_response();
@@ -692,15 +669,143 @@ bool discoverSUB() {
         const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
         if (cJSON_GetArraySize(ae) != 0)
         {
-            LOG_INF("There is SUB");
             free_json_response(j);
             give_http_sem();
             return true;
         }
-        
     }
     free_json_response(j);
     give_http_sem();
-    LOG_INF("There is NO SUB");
     return false;
+}
+
+void onem2m_performPoll() {
+    const char* headers[] = {
+        "Connection: keep-alive\r\n",
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: a34sds2efw4rg6r\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+    
+    //create URL 
+    take_http_sem();
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer, "%s/pcu", pchurl);
+    int response_status = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_status <= 0) {
+        LOG_ERR("Failed to poll PCH!");
+        give_http_sem();
+        return;
+    }
+
+    if (response_status == 504) {
+        // Response timed out, nothing to update
+        give_http_sem();
+        return;
+    }
+
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* rqp = cJSON_GetObjectItemCaseSensitive(j, "m2m:rqp");
+        if (!cJSON_IsObject(rqp)) {
+            LOG_INF("Failed to get m2m:rqp from PCH response!");
+            free_json_response(j);
+            give_http_sem();
+            return;
+        }
+
+        const cJSON* rqi = cJSON_GetObjectItemCaseSensitive(rqp, "rqi");
+        if (cJSON_IsString(rqi) && (rqi->valuestring != NULL)) {
+            // Copy in the request id (rqi)
+            strncpy(rqi_value, rqi->valuestring, RQI_LENGTH);
+            LOG_INF("Got rqi: %s", rqi_value);
+        } 
+        else {
+            LOG_INF("Failed to get rqi from PCH response!");
+            free_json_response(j);
+            give_http_sem();
+            return;
+        }
+
+        //pc.m2m:sgn.nev.rep.traffic:trfint
+        //
+        const cJSON* pc = cJSON_GetObjectItemCaseSensitive(rqp, "pc");
+        if (cJSON_IsObject(pc)) {
+            const cJSON* sgn = cJSON_GetObjectItemCaseSensitive(pc, "m2m:sgn");
+            if (cJSON_IsObject(sgn)) {
+                const cJSON* nev = cJSON_GetObjectItemCaseSensitive(sgn, "nev");
+                if (cJSON_IsObject(nev)) {
+                    const cJSON* rep = cJSON_GetObjectItemCaseSensitive(nev, "rep");
+                    if (cJSON_IsObject(rep)) {
+                        const cJSON* flex = cJSON_GetObjectItemCaseSensitive(rep, "traffic:trfint");
+                        if (cJSON_IsObject(flex)) {
+                                updateLightStatesFromJSON(flex);   
+                        }
+                        else {
+                            LOG_ERR("Failed to get m2m:rqp.pc.m2m:sgn.nev.rep.traffic:trfint from JSON!");
+                        } 
+                    }
+                    else {
+                        LOG_ERR("Failed to get m2m:rqp.pc.m2m:sgn.nev.rep from JSON!");
+                    }  
+                }
+                else {
+                    LOG_ERR("Failed to get m2m:rqp.pc.m2m:sgn.nev from JSON!");
+                }   
+            }
+            else {
+                LOG_ERR("Failed to get m2m:rqp.pc.m2m:sgn from JSON!");
+            }
+        }
+        else {
+            LOG_ERR("Failed to get m2m:rqp.pc from JSON!");
+        }
+    }
+    else {
+        free_json_response(j);
+        give_http_sem();
+        return;
+    }
+
+    // Send an acknowledge to the notification we received
+    LOG_INF("Acknowledging PCH rqi: %s", rqi_value);
+    char m2m_ri_echo[63];
+    memset(m2m_ri_echo, 0, 63);
+    sprintf(m2m_ri_echo, "X-MRM-RI: %s\r\n", rqi_value);
+    const char* echo_headers[] = {
+        "Connection: keep-alive\r\n",
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        m2m_ri_echo,
+        "X-M2M-RVI: 3\r\n",
+    NULL};
+
+    char pc_echo[601];
+    memset(pc_echo,0,601);
+    // Note: At this point, rqp HAS to exist b/c we just retrieved it to update the lights
+    const cJSON* rqp = cJSON_GetObjectItemCaseSensitive(j, "m2m:rqp");
+    cJSON* pc = cJSON_GetObjectItemCaseSensitive(rqp, "pc");
+    if(!cJSON_PrintPreallocated(pc, pc_echo, 600, cJSON_False)) {
+        LOG_ERR("Ran out of space in buffer while printing JSON for PCH response!");
+        free_json_response(j);
+        give_http_sem();
+        return;
+    }
+    clear_onem2m_request_payload();
+    sprintf(onem2m_request_payload, pch_ack_payload, rqi_value, pc_echo);
+
+    response_status = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), echo_headers);
+    if (response_status <= 0) {
+        LOG_ERR("Failed to echo PCH notification!");
+        free_json_response(j);
+        give_http_sem();
+        return;
+    }
+    
+    free_json_response(j);
+    give_http_sem();
+    return;
 }

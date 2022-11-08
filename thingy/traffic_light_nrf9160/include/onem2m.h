@@ -21,7 +21,7 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts);
 // Polling Channel (PCH)
 void createPCH();
 bool discoverPCH();
-void performPoll();
+void onem2m_performPoll();
 
 // Subscriptions (SUB)
 void createSUB();

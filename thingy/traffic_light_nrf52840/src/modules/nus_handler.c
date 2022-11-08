@@ -38,7 +38,7 @@ LOG_MODULE_REGISTER(MODULE);
 #define KEY_PASSKEY_ACCEPT DK_BTN1_MSK
 #define KEY_PASSKEY_REJECT DK_BTN2_MSK
 
-#define NUS_WRITE_TIMEOUT K_MSEC(150)
+#define NUS_WRITE_TIMEOUT K_MSEC(500)
 
 K_SEM_DEFINE(nus_write_sem,1,1);
 
@@ -394,6 +394,8 @@ void send_ble_command(char* s) {
 		LOG_ERR("NUS send timeout");
 	}
 
+	LOG_INF("Sending: %s", s);
+
 	err = bt_nus_client_send(&nus_client, s, strlen(s));
 	if (err) {
 		LOG_ERR("Failed to send data over BLE connection (err %d)", err);
@@ -448,7 +450,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				APP_EVENT_SUBMIT(event3);
             break;
             case AE_CMD_SET_STATE1:
-                //LOG_INF("AE CMD SET STATE 1");
+            	LOG_INF("AE CMD SET STATE 1");
                 switch(event->light_state) {
 					case LIGHT_OFF:
 					send_ble_command("off1;");
@@ -468,7 +470,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				}
             break;
             case AE_CMD_SET_STATE2:
-                //LOG_INF("AE CMD SET STATE2");
+                LOG_INF("AE CMD SET STATE2");
                 switch(event->light_state) {
 					case LIGHT_OFF:
 					send_ble_command("off2;");

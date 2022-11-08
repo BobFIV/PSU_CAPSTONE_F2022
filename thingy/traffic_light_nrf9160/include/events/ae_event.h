@@ -32,7 +32,7 @@ enum ae_light_states {
 };
 
 enum ae_event_types {
-	AE_EVENT_LIGHT_CMD
+	AE_EVENT_LIGHT_CMD, AE_EVENT_REGISTER, AE_EVENT_CREATE_DATA_MODEL, AE_EVENT_POLL
 };
 
 /** Peer connection event. */
@@ -41,13 +41,15 @@ struct ae_event {
 
 	// Command type
 	enum ae_event_types cmd;
-	// Light that this event targets/effects. 
-	enum ae_lights target_light;
-	// State that the light should be put into
-	enum ae_light_states new_light_state;
+	// State that the lights should be put into
+	enum ae_light_states new_light1_state;
+	enum ae_light_states new_light2_state;
+	// If set to true, then AE_EVENT_REGISTER should then trigger an AE_EVENT_CREATE_DATA_MODEL
+	bool do_init_sequence;
 };
 
 enum ae_light_states string_to_light_state(char* str, size_t max_length);
+void light_state_to_string(enum ae_light_states state, char* output);
 
 APP_EVENT_TYPE_DECLARE(ae_event);
 

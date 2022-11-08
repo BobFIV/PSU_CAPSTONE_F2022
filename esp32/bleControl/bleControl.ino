@@ -242,7 +242,7 @@ void setup() {
   //Bluetooth device name
   bt.begin(DEVICE_NAME);
 
-  Serial.println("Device started!");
+  //Serial.println("Device started!");
 }
 
 String message = "";
@@ -262,7 +262,7 @@ void loop() {
       message = "";
     }
 
-    Serial.write(incomingChar);
+    //Serial.write(incomingChar);
   }
 
   if(message == "red1") {
@@ -306,5 +306,4 @@ void loop() {
     digitalWrite(y2Pin, LOW);
     digitalWrite(g2Pin, LOW);
   }
-  delay(20);
 }

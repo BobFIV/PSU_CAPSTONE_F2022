@@ -21,6 +21,11 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
 
+#define POLL_THREAD_STACK_SIZE 32768
+#define POLLING_CHANNEL_PRIORITY 5
+K_THREAD_STACK_DEFINE(poll_thread_stack, POLL_THREAD_STACK_SIZE);
+struct k_thread polling_thread;
+
 // The external function uart_tx_enqueue is defined in uart_handler.c
 extern int uart_tx_enqueue(uint8_t *data, size_t data_len, uint8_t dev_idx); 
 
@@ -30,31 +35,33 @@ bool ble_connected = false;
 bool ble_scanning = false;
 enum ae_light_states light1_state = AE_LIGHT_RED;
 enum ae_light_states light2_state = AE_LIGHT_RED;
+bool poll_thread_started = false;
+struct k_sem polling_sem;
+
+void register_ae();
+void create_data_model();
+
+void take_poll_sem() {
+	k_sem_take(&polling_sem, K_FOREVER);
+}
+
+void give_poll_sem() {
+	k_sem_give(&polling_sem);
+}
 
 void send_command(const char* cmd) {
 	// Device index of 1 is to send to nRF52840
-	uart_tx_enqueue((uint8_t*) cmd, strnlen(cmd, 30), 1);
+	uart_tx_enqueue((uint8_t*) cmd, strlen(cmd), 1);
 }
 
-/*void ble_connection_management_thread() {
-	while(true) {
-		k_sleep(K_MSEC(1000));
-		if (!lte_connected) {
-			// LTE is not connected
-			// Don't do anything with BLE until we have LTE
-			continue;
-		}
-		else if (!ble_connected) {
-			// LTE is connected, but BLE is not
-			if (!ble_scanning) {
-				send_command("!start_scan" BLE_TARGET ";");
-			}
-		}
-	}
-}*/
-
 void push_flex_container() {
-	update_flex_container(light_state_to_string(light1_state), light_state_to_string(light2_state), ble_connected ? "connected" : "disconnected");
+	char l1_state_string[10];
+	char l2_state_string[10];
+	memset(l1_state_string,0,10);
+	memset(l2_state_string,0,10);
+	light_state_to_string(light1_state, l1_state_string);
+	light_state_to_string(light2_state, l2_state_string);
+	updateFlexContainer(l1_state_string, l2_state_string, ble_connected ? "connected" : "disconnected");
 }
 
 void set_yellow_led() {
@@ -112,23 +119,82 @@ void update_light_states() {
 	}
 }
 
+void register_ae() {
+	if (!discoverACP()) {
+		createACP();
+	}
+
+	if (!discoverAE()) {
+		createAE();
+		createPCH();
+	}
+	else if (!discoverPCH()) {
+		createPCH();
+	}
+}
+
+void create_data_model() {
+	if(!discoverFlexContainer()) {
+		createFlexContainer();
+		createSUB();
+	}
+	else if (!discoverSUB()) {
+		createSUB();
+	}
+}
+
+void do_poll() {
+	while(true) {
+		take_poll_sem();
+		onem2m_performPoll();
+		struct ae_event* a = new_ae_event();
+		a->cmd = AE_EVENT_POLL;
+		APP_EVENT_SUBMIT(a);
+	}
+}
+
 static bool app_event_handler(const struct app_event_header *aeh)
 {
 	if(is_ae_event(aeh)) {
 		const struct ae_event *event = cast_ae_event(aeh);
 		if (event->cmd == AE_EVENT_LIGHT_CMD) {
-			if (event->target_light == AE_LIGHT1) {
-				light1_state = event->new_light_state;
+			light1_state = event->new_light1_state;
+			light2_state = event->new_light2_state;
+			update_light_states();
+		}
+		else if (event->cmd == AE_EVENT_POLL) {
+			if (!poll_thread_started) {
+				poll_thread_started = true;
+				k_thread_create(&polling_thread, poll_thread_stack,
+                                 K_THREAD_STACK_SIZEOF(poll_thread_stack),
+                                 do_poll,
+                                 NULL, NULL, NULL,
+                                 POLLING_CHANNEL_PRIORITY, 0, K_NO_WAIT);
 			}
-			else if (event->target_light == AE_LIGHT2) {
-				light2_state = event->new_light_state;
-			}
-
-			if (ble_connected && lte_connected) {
-				update_light_states();
+			else {
+				give_poll_sem();
 			}
 		}
-
+		else if (event->cmd == AE_EVENT_REGISTER) {
+			register_ae();
+			if (event->do_init_sequence) {
+				// Trigger the AE_EVENT_CREATE_DATA_MODEL EVENT
+				struct ae_event* a = new_ae_event();
+				a->cmd = AE_EVENT_CREATE_DATA_MODEL;
+				a->do_init_sequence = true;
+				APP_EVENT_SUBMIT(a);
+			}
+		}
+		else if (event->cmd == AE_EVENT_CREATE_DATA_MODEL) {
+			create_data_model();
+			if (event->do_init_sequence) {
+				push_flex_container();
+				// Trigger the AE_EVENT_POLL EVENT
+				struct ae_event* a = new_ae_event();
+				a->cmd = AE_EVENT_POLL;
+				APP_EVENT_SUBMIT(a);
+			}
+		}
 		return false;
 	}
 
@@ -137,9 +203,13 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		if (event->conn_state == LTE_CONNECTED) {
 			lte_connected = true;
 			LOG_INF("Got LTE_CONNECTED");
+			struct ae_event* a = new_ae_event();
+			a->cmd = AE_EVENT_REGISTER;
+			a->do_init_sequence = true;
+			APP_EVENT_SUBMIT(a);
+			
 			if (ble_connected) {
 				set_green_led();
-				update_light_states();
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
@@ -163,6 +233,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			if (lte_connected) {
 				set_green_led();
 				update_light_states();
+				push_flex_container();
 			}
 			else {
 				light1_state = AE_LIGHT_RED;
@@ -175,6 +246,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			ble_connected = false;
 			if (lte_connected) {
 				set_blue_led();
+				push_flex_container();
 			}
 			send_command("!start_scan" BLE_TARGET ";");
         }
@@ -194,8 +266,11 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
 			ble_scanning = false;
 			lte_connected = false;
+			poll_thread_started = false;
+			k_sem_init(&polling_sem, 1, 1);
 			send_command("!start_scan" BLE_TARGET ";");
 			set_yellow_led();
+			init_oneM2M();
 		}
 		return false;
 	}

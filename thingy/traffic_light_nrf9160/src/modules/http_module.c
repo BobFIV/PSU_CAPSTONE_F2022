@@ -20,8 +20,6 @@
 
 #define MODULE http_module
 #include <caf/events/module_state_event.h>
-#include "events/lte_event.h"
-#include "events/ae_event.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(MODULE);
@@ -37,8 +35,8 @@ struct k_sem http_request_sem;
 // String representation of the resolved IP address
 static char resolved_ip_addr[INET6_ADDRSTRLEN];
 
-// HTTP timeout is 10 seconds
-static int32_t HTTP_REQUEST_TIMEOUT = 10 * MSEC_PER_SEC;
+// HTTP timeout is 3 seconds
+static int32_t HTTP_REQUEST_TIMEOUT = 12 * MSEC_PER_SEC;
 
 // Buffer that we store the HTTP response in. Make sure you have the http_request_sem before accessing this.
 static char http_rx_buf[HTTP_RX_BUF_SIZE];
@@ -51,6 +49,9 @@ static size_t http_content_length = 0;
 
 // HTTP Response status code
 static uint16_t http_response_code = 0;
+
+static int http_socket = -1;
+static bool http_connected = false;
 
 // Define a heap for parsing and constructing JSON objects using cJSON
 K_HEAP_DEFINE(cjson_heap, 5120);
@@ -111,12 +112,12 @@ static void response_cb(struct http_response *rsp,
 			http_rx_body_start = rsp->body_frag_start;
 			http_content_length = rsp->body_frag_len;
 			printk("\n%s\n", http_rx_body_start);
-			http_response_code = rsp->http_status;
 		}
 		else {
 			LOG_WRN("No content returned from HTTP request!");
 			http_content_length = 0;
 		}
+		http_response_code = rsp->http_status_code;
 	}
 
 	LOG_INF("Response status %s", rsp->http_status);
@@ -125,46 +126,50 @@ static void response_cb(struct http_response *rsp,
 static int perform_http_request(struct http_request* req) {
 	int retry_count = 0;
 	int response = 0;
-	bool http_connected = false;
+	bool ok = false;
 
-	int http_socket = -1;
-	while (retry_count < 3) {
-		int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
-		if (reconnect_response < 0) {
-			LOG_ERR("connect_socket() failed!");
-			retry_count++;
-			continue;
-		}
-		else {
-			LOG_INF("HTTP CONNECTED");
-			http_connected = true;
-			break;
+	if (!http_connected) {
+		while (retry_count < 3) {
+			int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
+			if (reconnect_response < 0) {
+				LOG_ERR("connect_socket() failed: %d", reconnect_response);
+				close(http_socket);
+				retry_count++;
+				continue;
+			}
+			else {
+				http_connected = true;
+				break;
+			}
 		}
 	}
 	if (http_connected) {
-		response = http_client_req(http_socket, req, HTTP_REQUEST_TIMEOUT, NULL);
-		
-		if (response < 0) {
-			LOG_ERR("http_client_req returned %d !", response);
-			if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
-				close(http_socket);
-				http_connected = false;
-				int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
-				if (reconnect_response < 0) {
-					LOG_ERR("connect_socket() failed!");
-					return -2;
+		retry_count = 0;
+		while (retry_count < 3) {
+			response = http_client_req(http_socket, req, HTTP_REQUEST_TIMEOUT, NULL);
+			
+			if (response < 0) {
+				LOG_ERR("http_client_req returned %d !", response);
+				if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
+					close(http_socket);
+					http_connected = false;
+					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
+					if (reconnect_response < 0) {
+						LOG_ERR("connect_socket() failed!");
+						ok = false;
+						return -2;
+					}
+					else {
+						http_connected = true;
+					}
 				}
-				else {
-					LOG_INF("HTTP CONNECTED");
-					http_connected = true;
-				}
+				retry_count++;
+				continue;
 			}
-			retry_count++;
-			continue;
-		}
-		else {
-			ok = true;
-			break;
+			else {
+				ok = true;
+				break;
+			}
 		}
 	}
 
@@ -172,7 +177,7 @@ static int perform_http_request(struct http_request* req) {
 		LOG_ERR("Retried %d times, quitting request!", retry_count);
 		return -1;
 	}
-
+	LOG_INF("HTTP STATUS: %d", http_response_code);
 	return http_response_code;
 }
 
@@ -182,10 +187,6 @@ int get_request(char* host, char* url, const char** headers) {
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
 		//
-		if (!http_connected) {
-			LOG_WRN("Attempted to call get_request %s when http_connected is false!", url);
-			return -1;
-		}
 
 		// Clear out the response buffer
 		memset(&http_rx_buf[0], 0, HTTP_RX_BUF_SIZE);
@@ -211,11 +212,6 @@ int post_request(char* host, char* url, char* payload, size_t payload_size, cons
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
 		//
 
-		if (!http_connected) {
-			LOG_WRN("Attempted to call push_request %s when http_connected is false!", url);
-			return -1;
-		}
-
 		// Clear out the response buffer
 		memset(&http_rx_buf, 0, HTTP_RX_BUF_SIZE);
 		// Create a new request
@@ -240,11 +236,6 @@ int put_request(char* host, char* url, char* payload, size_t payload_size, const
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
 		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
 		//
-
-		if (!http_connected) {
-			LOG_WRN("Attempted to call put_request %s when http_connected is false!", url);
-			return -1;
-		}
 
 		// Clear out the response buffer
 		memset(&http_rx_buf, 0, HTTP_RX_BUF_SIZE);
@@ -337,78 +328,12 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 		if (check_state(event, MODULE_ID(main), MODULE_STATE_READY)) {
 			LOG_INF("HTTP module setup");
+			memset(&resolved_ip_addr[0], 0, INET6_ADDRSTRLEN);
 		    http_rx_body_start = NULL;
 		    http_content_length = 0;
-		    http_socket = -1;
 			cJSON_InitHooks(&cjson_mem_hooks);
 			k_sem_init(&http_request_sem, 1, 1);
-			init_oneM2M();
 		}
-
-		return false;
-	}
-
-	if (is_lte_event(aeh)) {
-		const struct lte_event *event = cast_lte_event(aeh);
-		if (event->conn_state == LTE_CONNECTED) {
-			LOG_INF("Got LTE_CONNECTED");
-			memset(&resolved_ip_addr[0], 0, INET6_ADDRSTRLEN);
-			int err = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
-			if (err < 0) {
-				LOG_ERR("connect_socket() failed!");
-				return false;
-			}
-			else {
-				LOG_INF("HTTP CONNECTED");
-				http_connected = true;
-
-				if (!(discoverACP())) {
-					createACP();
-					createAE();
-					createFlexContainer();
-					createPCH();
-					createSUB();
-				}
-				else {
-					if(!(discoverAE())){
-						createAE();
-						createFlexContainer();
-						createPCH();
-						createSUB();
-					}
-					else{
-						if(!(discoverFlexContainer())){
-							createFlexContainer();
-							createPCH();
-							createSUB();
-						}
-						else{
-							if(!(retrievePCH())){
-								createPCH();
-								createSUB();
-							}
-							else{
-								if(!(discoverSUB())){
-									createSUB();
-								}
-							}
-						}
-					}
-				}
-			}
-			char* newl1s = "red";
-			char* newl2s = "red";
-			char* newbts = "disconnected";
-			updateFlexContainer(newl1s, newl2s, newbts);
-        }
-		else if (event->conn_state == LTE_DISCONNECTED) {
-			LOG_INF("Got LTE_DISCONNECTED");
-			if (http_connected) {
-				close(http_socket);
-				http_connected = false;
-				LOG_INF("HTTP DISCONNECTED");
-			}
-        }
 
 		return false;
 	}
@@ -420,4 +345,3 @@ static bool app_event_handler(const struct app_event_header *aeh)
 
 APP_EVENT_LISTENER(MODULE, app_event_handler);
 APP_EVENT_SUBSCRIBE(MODULE, module_state_event);
-APP_EVENT_SUBSCRIBE(MODULE, lte_event);

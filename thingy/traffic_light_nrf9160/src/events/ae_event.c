@@ -6,10 +6,9 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #include "events/ae_event.h"
-
-static char*[4] light_state_strings = { "none", "off", "green", "yellow", "red" };
 
 enum ae_light_states string_to_light_state(char* str, size_t max_length) {
 	if (strncmp(str, "green", max_length) == 0) {
@@ -28,12 +27,28 @@ enum ae_light_states string_to_light_state(char* str, size_t max_length) {
 }
 
 void light_state_to_string(enum ae_light_states state, char* output) {
-	output = light_state_strings[state];
+	switch(state) {
+		case AE_LIGHT_GREEN:
+			strcpy(output, "green");
+		break;
+		case AE_LIGHT_YELLOW:
+			strcpy(output, "yellow");
+		break;
+		case AE_LIGHT_RED:
+			strcpy(output, "red");
+		break;
+		case AE_LIGHT_OFF:
+			strcpy(output, "off");
+		break;
+		case AE_LIGHT_STATE_NONE:
+		default:
+			strcpy(output, "none");
+		break;
+	}
 }
 
 static void log_ae_event(const struct app_event_header *aeh)
 {
-	
 	/*
 	const struct ae_event *event = cast_ae_event(aeh);
 

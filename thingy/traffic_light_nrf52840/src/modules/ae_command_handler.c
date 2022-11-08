@@ -59,11 +59,13 @@ void parser_end() {
             cmd = AE_CMD_SET_STATE1;
             state = LIGHT_YELLOW;
             valid_cmd = true;
+             LOG_INF("parsed YELLOW 1");
         }
         else if (strncmp(&cmd_parse_buf[0], "red1", CMD_PARSE_BUFFER_SIZE) == 0) {
             cmd = AE_CMD_SET_STATE1;
             state = LIGHT_RED;
             valid_cmd = true;
+            LOG_INF("parsed RED 1");
         }
         else if (strncmp(&cmd_parse_buf[0], "off1", CMD_PARSE_BUFFER_SIZE) == 0) {
             cmd = AE_CMD_SET_STATE1;
@@ -74,16 +76,19 @@ void parser_end() {
             cmd = AE_CMD_SET_STATE2;
             state = LIGHT_GREEN;
             valid_cmd = true;
+            LOG_INF("parsed GREEN 2");
         }
         else if (strncmp(&cmd_parse_buf[0], "yellow2", CMD_PARSE_BUFFER_SIZE) == 0) {
             cmd = AE_CMD_SET_STATE2;
             state = LIGHT_YELLOW;
             valid_cmd = true;
+            LOG_INF("parsed YELLOW 2");
         }
         else if (strncmp(&cmd_parse_buf[0], "red2", CMD_PARSE_BUFFER_SIZE) == 0) {
             cmd = AE_CMD_SET_STATE2;
             state = LIGHT_RED;
             valid_cmd = true;
+            LOG_INF("parsed RED 2");
         }
         else if (strncmp(&cmd_parse_buf[0], "off2", CMD_PARSE_BUFFER_SIZE) == 0) {
             cmd = AE_CMD_SET_STATE2;
@@ -161,7 +166,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
                     // We found the end of a command
                     parser_end();
                     reset_parser();
-                    break;
+                    continue;
                 }
                 else if (cmd_started) {
                     // copy character to the parse buffer
