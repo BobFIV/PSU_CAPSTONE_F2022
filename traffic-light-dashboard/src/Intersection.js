@@ -15,6 +15,7 @@ export class IntersectionFlexContainer extends FlexContainer {
 
         this.retrieve = this.retrieve.bind(this);
         this.update = this.update.bind(this);
+        this.create = this.create.bind(this);
         this._refresh_from_response = this._refresh_from_response.bind(this);
         this.handle_update_notification = this.handle_update_notification.bind(this);
     }
@@ -36,12 +37,17 @@ export class IntersectionFlexContainer extends FlexContainer {
         this._refresh_from_response(update_notification);
     }
 
+
     retrieve(connection) {
         return super.retrieve(connection).then((response) => this._refresh_from_response(response));
     }
 
     update(connection, new_state) {
         return super.update(connection, new_state).then((response) => this._refresh_from_response(response));
+    }
+
+    create(connection) {
+        return super.create(connection, { bts: this.ble_state, l1s: this.light1_state, l2s: this.light2_state }).then((response) => { this._refresh_from_response(response) });
     }
 };
 
