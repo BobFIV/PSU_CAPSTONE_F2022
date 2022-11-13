@@ -10,7 +10,7 @@
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 
-#define DEVICE_LETTER "C"
+#define DEVICE_LETTER "B"
 #define DEVICE_NAME "Intersection" DEVICE_LETTER
 
 //GPIO pins for our light control

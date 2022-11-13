@@ -266,20 +266,20 @@ void pdn_event_handler(uint8_t cid, enum pdn_event event, int reason)
 		LOG_WRN("Event: PDP context %d, %s", cid, pdn_esm_strerror(reason));
 		break;
 	case PDN_EVENT_ACTIVATED:
-		LOG_DBG("PDN_EVENT_ACTIVATED");
+		LOG_INF("PDN_EVENT_ACTIVATED");
 		{ SEND_EVENT(modem, MODEM_EVT_LTE_CONNECTED); }
 		
 		break;
 	case PDN_EVENT_DEACTIVATED:
-		LOG_DBG("PDN_EVENT_DEACTIVATED");
+		LOG_INF("PDN_EVENT_DEACTIVATED");
 		{ SEND_EVENT(modem, MODEM_EVT_LTE_DISCONNECTED); }
 		
 		break;
 	case PDN_EVENT_IPV6_UP:
-		LOG_DBG("PDN_EVENT_IPV6_UP");
+		LOG_INF("PDN_EVENT_IPV6_UP");
 		break;
 	case PDN_EVENT_IPV6_DOWN:
-		LOG_DBG("PDN_EVENT_IPV6_DOWN");
+		LOG_INF("PDN_EVENT_IPV6_DOWN");
 		break;
 	default:
 		LOG_WRN("Unexpected PDN event!");
@@ -359,7 +359,6 @@ static inline int adjust_rsrp(int input, enum sample_type type)
 		LOG_WRN("Unknown sample type");
 		break;
 	}
-
 	return input;
 }
 
@@ -609,7 +608,7 @@ static void module_thread_fn(void)
 {
 	int err;
 	struct modem_msg_data msg = { 0 };
-	LOG_INF("moduel thread begin");
+	LOG_INF("module thread begin");
 	self.thread_id = k_current_get();
 
 	err = module_start(&self);

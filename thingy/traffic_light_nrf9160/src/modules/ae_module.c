@@ -61,7 +61,7 @@ void push_flex_container() {
 	memset(l2_state_string,0,10);
 	light_state_to_string(light1_state, l1_state_string);
 	light_state_to_string(light2_state, l2_state_string);
-	
+
 	char ble_string[20];
 	memset(ble_string, 0, 20);
 	if (ble_connected) {
@@ -74,12 +74,6 @@ void push_flex_container() {
 	updateFlexContainer(l1_state_string, l2_state_string, ble_string);
 }
 
-void set_yellow_led() {
-	struct led_state_event* l = new_led_state_event();
-	l->state = LED_STATE_YELLOW_BREATH;
-	APP_EVENT_SUBMIT(l);
-}
-
 void set_green_led() {
 	struct led_state_event* l = new_led_state_event();
 	l->state = LED_STATE_GREEN_BREATH;
@@ -89,6 +83,12 @@ void set_green_led() {
 void set_blue_led() {
 	struct led_state_event* l = new_led_state_event();
 	l->state = LED_STATE_BLUE_BREATH;
+	APP_EVENT_SUBMIT(l);
+}
+
+void set_red_led() {
+	struct led_state_event* l = new_led_state_event();
+	l->state = LED_STATE_RED_SOLID;
 	APP_EVENT_SUBMIT(l);
 }
 
@@ -155,8 +155,11 @@ void create_data_model() {
 
 void do_poll() {
 	while(true) {
+		LOG_INF("poll loop");
 		take_poll_sem();
+		LOG_INF("take poll sem");
 		onem2m_performPoll();
+		LOG_INF("done poll");
 		struct ae_event* a = new_ae_event();
 		a->cmd = AE_EVENT_POLL;
 		APP_EVENT_SUBMIT(a);
@@ -225,7 +228,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 		else if (event->conn_state == LTE_DISCONNECTED) {
 			lte_connected = false;
 			LOG_INF("Got LTE_DISCONNECTED");
-			set_yellow_led();
+			set_red_led();
 			// If we are paired with a traffic light, set it to RED until we re-establish our connection
 			light1_state = AE_LIGHT_RED;
 			light2_state = AE_LIGHT_RED;
@@ -279,7 +282,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			poll_thread_started = false;
 			k_sem_init(&polling_sem, 1, 1);
 			send_command("!start_scan" BLE_TARGET ";");
-			set_yellow_led();
+			set_red_led();
 			init_oneM2M();
 		}
 		return false;

@@ -111,7 +111,7 @@ static void response_cb(struct http_response *rsp,
 		if (rsp->body_found) {
 			http_rx_body_start = rsp->body_frag_start;
 			http_content_length = rsp->body_frag_len;
-			printk("\n%s\n", http_rx_body_start);
+			LOG_INF("\n%s\n", http_rx_body_start);
 		}
 		else {
 			LOG_WRN("No content returned from HTTP request!");

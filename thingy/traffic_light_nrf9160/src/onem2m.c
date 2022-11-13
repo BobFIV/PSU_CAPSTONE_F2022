@@ -99,8 +99,8 @@ void createACP() {
     
     // make post request
     take_http_sem();
-    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", acp_create_payload, strlen(acp_create_payload), headers);
-    if (response_length <= 0) {
+    int response_code = post_request(ENDPOINT_HOSTNAME, "/id-in", acp_create_payload, strlen(acp_create_payload), headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to create ACP!");
         give_http_sem();
         return;
@@ -148,8 +148,8 @@ bool discoverACP() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=1&rn=%s-ACP", M2M_ORIGINATOR);
-    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_length <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if ACP is already created");
         give_http_sem();
         return NULL;
@@ -203,8 +203,8 @@ char* createAE() {
     
     // make post request
     take_http_sem();
-    int response_length = post_request(ENDPOINT_HOSTNAME, "/id-in", onem2m_request_payload, strlen(onem2m_request_payload), headers);
-    if (response_length <= 0) {
+    int response_code = post_request(ENDPOINT_HOSTNAME, "/id-in", onem2m_request_payload, strlen(onem2m_request_payload), headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to create AE!");
         give_http_sem();
         return NULL;
@@ -254,8 +254,8 @@ bool discoverAE() {
     //create URL 
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=2&rn=intersection%s", DEVICE_LETTER);
-    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_length <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if AE is already created");
         give_http_sem();
         return NULL;
@@ -315,8 +315,8 @@ char* createFlexContainer() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"/%s", aeurl);
-    int response_length = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
-    if (response_length <= 0) {
+    int response_code = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to create Flex Container!");
         give_http_sem();
         return NULL;
@@ -366,8 +366,8 @@ bool discoverFlexContainer() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=28&pi=%s", aeurl);
-    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_length <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if flex container is already created");
         give_http_sem();
         return NULL;
@@ -419,8 +419,8 @@ void retrieveFlexContainer() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"/%s", flexident);
-    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_length <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if flex container is already created");
         give_http_sem();
         return;
@@ -470,8 +470,9 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"/%s", flexident);
-    int response_length = put_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
-    if (response_length <= 0) {
+    int response_code = put_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
+    if (response_code
+     <= 0) {
         LOG_ERR("Failed to update Flex Container!");
         give_http_sem();
         return false;
@@ -501,8 +502,8 @@ void createPCH() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"/%s", aeurl);
-    int response_length = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, create_pch_payload, strlen(create_pch_payload), headers);
-    if (response_length <= 0) {
+    int response_code = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, create_pch_payload, strlen(create_pch_payload), headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if PCH is already created");
         give_http_sem();
         return;
@@ -552,8 +553,8 @@ bool discoverPCH() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=15&pi=%s", aeurl);
-    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_length <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if PCH is already created");
         give_http_sem();
         return NULL;
@@ -627,8 +628,8 @@ void createSUB() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"/%s", flexident);
-    int response_length = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, payload, strlen(payload), headers);
-    if (response_length <= 0) {
+    int response_code = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, payload, strlen(payload), headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if SUB is already created");
         give_http_sem();
         return;
@@ -656,8 +657,8 @@ bool discoverSUB() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer,"id-in?fu=1&drt=2&ty=23&rn=%sSUB", M2M_ORIGINATOR);
-    int response_length = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_length <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to check if SUB is already created");
         give_http_sem();
         return false;
@@ -693,14 +694,14 @@ void onem2m_performPoll() {
     take_http_sem();
     clear_onem2m_url_buffer();
     sprintf(onem2m_url_buffer, "%s/pcu", pchurl);
-    int response_status = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
-    if (response_status <= 0) {
+    int response_code = get_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to poll PCH!");
         give_http_sem();
         return;
     }
 
-    if (response_status == 504) {
+    if (response_code == 504) {
         // Response timed out, nothing to update
         give_http_sem();
         return;
@@ -797,8 +798,8 @@ void onem2m_performPoll() {
     clear_onem2m_request_payload();
     sprintf(onem2m_request_payload, pch_ack_payload, rqi_value, pc_echo);
 
-    response_status = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), echo_headers);
-    if (response_status <= 0) {
+    response_code = post_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), echo_headers);
+    if (response_code <= 0) {
         LOG_ERR("Failed to echo PCH notification!");
         free_json_response(j);
         give_http_sem();

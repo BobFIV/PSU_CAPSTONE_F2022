@@ -12,7 +12,7 @@
 #define ENDPOINT_PORT 8080
 
 // Originator name
-#define DEVICE_LETTER  "C"
+#define DEVICE_LETTER  "A"
 #define M2M_ORIGINATOR "Cthingy91" DEVICE_LETTER
 #define BLE_TARGET "Intersection" DEVICE_LETTER
 
