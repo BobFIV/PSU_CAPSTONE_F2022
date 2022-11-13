@@ -1,0 +1,10 @@
+green_on;
+red_on;
+red_on;
+yellow_on;
+off
+yellow_on;
+red_on;
+green_on;
+off
+green_on;
