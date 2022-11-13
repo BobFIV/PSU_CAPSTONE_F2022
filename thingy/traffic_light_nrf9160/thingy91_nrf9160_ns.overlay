@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2021 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+ / {
+	chosen {
+			zephyr,console = &uart0;
+	};
+};
+
+// Reenable the UART1 port, it is disabled by the _ns overlay DTS file
+&uart1 {
+	status = "okay";
+};
+
