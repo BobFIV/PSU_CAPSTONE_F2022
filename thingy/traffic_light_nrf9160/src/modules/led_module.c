@@ -72,10 +72,10 @@ static void update_led(enum led_state state)
 			       &traffic_light_led_effect[LED_STATE_BLUE_BREATH]);
 		led_bm |= (BIT(LED_ID_1) | BIT(LED_ID_1));
 		break;
-	case LED_STATE_RED_SOLID:
+	case LED_STATE_RED_BREATH:
 		for (size_t i = 0; i < LED_ID_COUNT; i++) {
 			send_led_event(i,
-					&traffic_light_led_effect[LED_STATE_RED_SOLID]);
+					&traffic_light_led_effect[LED_STATE_RED_BREATH]);
 			led_bm |= BIT(i);
 		}
 		break;
