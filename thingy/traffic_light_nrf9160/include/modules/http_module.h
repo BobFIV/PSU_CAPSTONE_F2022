@@ -24,6 +24,11 @@ int post_request(char* host, char* url, char* payload, size_t payload_size, cons
 // @param payload_size - Length of the payload in bytes
 int put_request(char* host, char* url, char* payload, size_t payload_size, const char** headers);
 
+// Performs an HTTP DELETE request
+// @param host - String representing the host name/IP address/domain name (ie. www.example.com or 8.8.8.8)
+// @param url - String representing the URL path (ie. /index.html)
+int delete_request(char* host, char* url, const char** headers);
+
 void take_http_sem();
 void give_http_sem();
 
