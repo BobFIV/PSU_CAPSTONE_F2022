@@ -51,7 +51,7 @@ static size_t http_content_length = 0;
 static uint16_t http_response_code = 0;
 
 static int http_socket = -1;
-static bool http_connected = false;
+static bool host_resolved = false;
 
 // Define a heap for parsing and constructing JSON objects using cJSON
 K_HEAP_DEFINE(cjson_heap, 5120);
@@ -92,7 +92,8 @@ void give_http_sem() {
 	k_sem_give(&http_request_sem);
 }
 
-static int connect_socket(const char *hostname_str, int port, int *sock);
+static int connect_socket(int *sock);
+static void resolve_target_host();
 
 /* Gets and stores the respones from an HTTP request
 	This is taken from the zephyr http_client examples */
@@ -127,22 +128,28 @@ static int perform_http_request(struct http_request* req) {
 	int retry_count = 0;
 	int response = 0;
 	bool ok = false;
+	bool http_connected = false;
 
-	if (!http_connected) {
-		while (retry_count < 3) {
-			int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
-			if (reconnect_response < 0) {
-				LOG_ERR("connect_socket() failed: %d", reconnect_response);
-				close(http_socket);
-				retry_count++;
-				continue;
-			}
-			else {
-				http_connected = true;
-				break;
-			}
+	if(!host_resolved) {
+		resolve_target_host();
+		host_resolved = true;
+	}
+
+
+	while (retry_count < 3) {
+		int reconnect_response = connect_socket(&http_socket);
+		if (reconnect_response < 0) {
+			LOG_ERR("connect_socket() failed: %d", reconnect_response);
+			close(http_socket);
+			retry_count++;
+			continue;
+		}
+		else {
+			http_connected = true;
+			break;
 		}
 	}
+	
 	if (http_connected) {
 		retry_count = 0;
 		while (retry_count < 3) {
@@ -153,7 +160,7 @@ static int perform_http_request(struct http_request* req) {
 				if (response == -ENOTCONN || response == -ETIMEDOUT || response == -ENETRESET || response == -ECONNRESET) {
 					close(http_socket);
 					http_connected = false;
-					int reconnect_response = connect_socket(ENDPOINT_HOSTNAME, ENDPOINT_PORT, &http_socket);
+					int reconnect_response = connect_socket(&http_socket);
 					if (reconnect_response < 0) {
 						LOG_ERR("connect_socket() failed!");
 						ok = false;
@@ -178,6 +185,7 @@ static int perform_http_request(struct http_request* req) {
 		return -1;
 	}
 	LOG_INF("HTTP STATUS: %d", http_response_code);
+	close(http_socket);
 	return http_response_code;
 }
 
@@ -280,28 +288,10 @@ void free_json_response(cJSON* parsed_json) {
 
 /* connects a socket to an HTTP addr:port/url
 	This is taken from the zephyr http_client examples */
-static int connect_socket(const char *hostname_str, int port, int *sock)
+static int connect_socket(int *sock)
 {
 	int err;
 	LOG_INF("connect_socket()");
-	err = getaddrinfo(hostname_str, NULL, &addr_hints, &addr_res);
-	if (err) {
-		LOG_ERR("getaddrinfo(%s) failed, err %d\n", hostname_str, errno);
-		return -1;
-	}
-
-	((struct sockaddr_in *) addr_res->ai_addr)->sin_port = htons(port);
-
-	// Print out the resolved IP address
-	if (addr_res->ai_addr->sa_family == AF_INET) {
-        struct sockaddr_in *p = (struct sockaddr_in *)addr_res->ai_addr;
-		net_addr_ntop(addr_res->ai_addr->sa_family, &p->sin_addr, &resolved_ip_addr[0], sizeof(resolved_ip_addr));
-    } else if (addr_res->ai_addr->sa_family == AF_INET6) {
-        struct sockaddr_in6 *p = (struct sockaddr_in6 *)addr_res->ai_addr;
-		net_addr_ntop(addr_res->ai_addr->sa_family, &p->sin6_addr, &resolved_ip_addr[0], sizeof(resolved_ip_addr));
-    }
-	net_addr_ntop(addr_res->ai_family, addr_res->ai_addr, &resolved_ip_addr[0], sizeof(resolved_ip_addr));
-	LOG_INF("Resolved target hostname to %s", resolved_ip_addr);
 
 	*sock = socket(addr_res->ai_family, SOCK_STREAM, IPPROTO_TCP);
 	if (*sock < 0)
@@ -315,8 +305,31 @@ static int connect_socket(const char *hostname_str, int port, int *sock)
 		LOG_ERR("Cannot connect to remote: %d", -errno);
 		return -errno;
 	}
-	LOG_INF("Connected to %s", hostname_str);
+	LOG_INF("Connected socket.");
 	return err;
+}
+
+static void resolve_target_host() {
+	int err;
+	LOG_INF("resolve_target_host()");
+	err = getaddrinfo(ENDPOINT_HOSTNAME, NULL, &addr_hints, &addr_res);
+	if (err) {
+		LOG_ERR("getaddrinfo(%s) failed, err %d\n", ENDPOINT_HOSTNAME, errno);
+		return -1;
+	}
+
+	((struct sockaddr_in *) addr_res->ai_addr)->sin_port = htons(ENDPOINT_PORT);
+
+	// Print out the resolved IP address
+	if (addr_res->ai_addr->sa_family == AF_INET) {
+        struct sockaddr_in *p = (struct sockaddr_in *)addr_res->ai_addr;
+		net_addr_ntop(addr_res->ai_addr->sa_family, &p->sin_addr, &resolved_ip_addr[0], sizeof(resolved_ip_addr));
+    } else if (addr_res->ai_addr->sa_family == AF_INET6) {
+        struct sockaddr_in6 *p = (struct sockaddr_in6 *)addr_res->ai_addr;
+		net_addr_ntop(addr_res->ai_addr->sa_family, &p->sin6_addr, &resolved_ip_addr[0], sizeof(resolved_ip_addr));
+    }
+	net_addr_ntop(addr_res->ai_family, addr_res->ai_addr, &resolved_ip_addr[0], sizeof(resolved_ip_addr));
+	LOG_INF("Resolved target hostname to: %s", resolved_ip_addr);
 }
 
 static bool app_event_handler(const struct app_event_header *aeh)
