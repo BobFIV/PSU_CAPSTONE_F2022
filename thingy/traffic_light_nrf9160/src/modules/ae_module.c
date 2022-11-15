@@ -88,7 +88,7 @@ void set_blue_led() {
 
 void set_red_led() {
 	struct led_state_event* l = new_led_state_event();
-	l->state = LED_STATE_RED_SOLID;
+	l->state = LED_STATE_RED_BREATH;
 	APP_EVENT_SUBMIT(l);
 }
 
@@ -185,6 +185,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
                                  POLLING_CHANNEL_PRIORITY, 0, K_NO_WAIT);
 			}
 			else {
+				update_light_states();
 				give_poll_sem();
 			}
 		}
