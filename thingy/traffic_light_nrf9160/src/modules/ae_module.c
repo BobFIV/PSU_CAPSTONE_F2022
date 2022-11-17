@@ -88,7 +88,7 @@ void set_blue_led() {
 
 void set_red_led() {
 	struct led_state_event* l = new_led_state_event();
-	l->state = LED_STATE_RED_SOLID;
+	l->state = LED_STATE_RED_BREATH;
 	APP_EVENT_SUBMIT(l);
 }
 
@@ -175,6 +175,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			light2_state = event->new_light2_state;
 			update_light_states();
 		}
+<<<<<<< HEAD
 		//TODO:
 		//Temporarily commented out while testing AT parsing
 		// else if (event->cmd == AE_EVENT_POLL) {

@@ -77,10 +77,11 @@ export class IntersectionComponent extends React.Component {
         
         let bt_status = intersection.ble_state == "connected" ? "Connected" : "Disconnected";
         let bt_state = intersection.ble_state;
+        let intersectionLetter = intersection.parent_id.substr(-1);
         
         return (<div className="intersection-container" >
 
-            <div className="intersection-id" >ID: {intersection.resource_id}</div>
+            <div className="intersection-id" >Intersection: {intersectionLetter}</div>
             <div>Bluetooth: <span className={bt_state} >{bt_status}</span></div>
             <TrafficLightComponent lightvalues={light1_values} 
                                     name="1" onClick={this.clickHandler} key="1" />

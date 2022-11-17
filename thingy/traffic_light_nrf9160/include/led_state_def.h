@@ -55,7 +55,8 @@ static const struct led_effect traffic_light_led_effect[] = {
 								   LED_PERIOD_RAPID),
 
 	// red solid
-	[LED_STATE_RED_SOLID]	= LED_EFFECT_LED_ON(LED_COLOR(255, 0, 0)),
+	[LED_STATE_RED_BREATH]	= LED_EFFECT_LED_BREATH(LED_PERIOD_NORMAL, 
+								   LED_COLOR(255, 0, 0)),
 	// fast yellow/orange breath
 	[LED_STATE_ORANGE_QUICK]	= LED_EFFECT_LED_BREATH(LED_PERIOD_RAPID,
 								LED_COLOR(100, 100, 0)),

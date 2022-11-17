@@ -89,7 +89,6 @@ void createACP() {
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=1\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -136,7 +135,6 @@ bool discoverACP() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -189,7 +187,6 @@ char* createAE() {
     LOG_INF("Creating AE");
     //create headers needed for the creation of AE
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=2\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -242,7 +239,6 @@ bool discoverAE() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -299,7 +295,6 @@ char* createFlexContainer() {
     
     //create headers needed for the creation of AE
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=28\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -354,7 +349,6 @@ bool discoverFlexContainer() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -407,7 +401,6 @@ void retrieveFlexContainer() {
 
     //need to create headers for the get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -448,12 +441,12 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
 
     //need to create headers for the get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RTU: 1\r\n", // RUI = 1 means nonBlockingSync
         NULL};
 
     //create payload
@@ -469,10 +462,9 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
     // make post request
     take_http_sem();
     clear_onem2m_url_buffer();
-    sprintf(onem2m_url_buffer,"/%s", flexident);
+    sprintf(onem2m_url_buffer,"/%s?rt=1", flexident);
     int response_code = put_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
-    if (response_code
-     <= 0) {
+    if (response_code <= 0) {
         LOG_ERR("Failed to update Flex Container!");
         give_http_sem();
         return false;
@@ -488,7 +480,6 @@ void createPCH() {
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=15\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -541,7 +532,6 @@ bool discoverPCH() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -596,7 +586,6 @@ void createSUB() {
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=23\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -645,7 +634,6 @@ bool discoverSUB() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -682,7 +670,6 @@ bool discoverSUB() {
 
 void onem2m_performPoll() {
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -776,7 +763,6 @@ void onem2m_performPoll() {
     memset(m2m_ri_echo, 0, 63);
     sprintf(m2m_ri_echo, "X-M2M-RI: %s\r\n", rqi_value);
     const char* echo_headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
