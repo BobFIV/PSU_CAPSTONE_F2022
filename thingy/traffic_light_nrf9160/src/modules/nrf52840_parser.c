@@ -24,6 +24,7 @@ bool backend_started = false;
 size_t backend_parse_buf_idx = 0; // the location in the backend_parse_buff that we are writing to
 
 void parse_nrf52840_char(char c) {
+	
 	if (backend_started && c != ';') {
 		// Message has been started, but we are not at the end
 		backend_parse_buf[backend_parse_buf_idx] = c;
@@ -36,6 +37,7 @@ void parse_nrf52840_char(char c) {
 		backend_started = true;
 	}
 	else if (backend_started && c == ';') {
+
 		// Found end of the message
 		if (strncmp(backend_parse_buf, "C", BACKEND_PARSE_BUFFER_SIZE) == 0) {
 			LOG_INF("Got BLE_CONNECTED from nRF52840!");
@@ -79,8 +81,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 	if (is_uart_data_event(aeh)) {
 		const struct uart_data_event *event =
 			cast_uart_data_event(aeh);
-		if (event->dev_idx == 1) {
-            // This is coming from the nRF52840
+		if (event->dev_idx == 0) {
+            
+			//This is coming from the nRF52840
             for (size_t i = 0; i < event->len; i++) {
 				parse_nrf52840_char(event->buf[i]);
 			}

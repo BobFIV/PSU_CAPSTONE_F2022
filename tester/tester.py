@@ -7,7 +7,7 @@ class Thingy:
     def __init__(self, sleep_time=1.0):
         self.ser = serial.Serial(
             port='/dev/ttyACM0',
-            baudrate=1000000
+            baudrate=115200
         )
 
         # Check if the serial port is open

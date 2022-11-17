@@ -175,19 +175,21 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			light2_state = event->new_light2_state;
 			update_light_states();
 		}
-		else if (event->cmd == AE_EVENT_POLL) {
-			if (!poll_thread_started) {
-				poll_thread_started = true;
-				k_thread_create(&polling_thread, poll_thread_stack,
-                                 K_THREAD_STACK_SIZEOF(poll_thread_stack),
-                                 do_poll,
-                                 NULL, NULL, NULL,
-                                 POLLING_CHANNEL_PRIORITY, 0, K_NO_WAIT);
-			}
-			else {
-				give_poll_sem();
-			}
-		}
+		//TODO:
+		//Temporarily commented out while testing AT parsing
+		// else if (event->cmd == AE_EVENT_POLL) {
+		// 	if (!poll_thread_started) {
+		// 		poll_thread_started = true;
+		// 		k_thread_create(&polling_thread, poll_thread_stack,
+        //                          K_THREAD_STACK_SIZEOF(poll_thread_stack),
+        //                          do_poll,
+        //                          NULL, NULL, NULL,
+        //                          POLLING_CHANNEL_PRIORITY, 0, K_NO_WAIT);
+		// 	}
+		// 	else {
+		// 		give_poll_sem();
+		// 	}
+		// }
 		else if (event->cmd == AE_EVENT_REGISTER) {
 			register_ae();
 			if (event->do_init_sequence) {

@@ -1,3 +1,5 @@
 build/
 thingy/traffic_light_nrf52840/windows-cmake.sh
 *.swp
+__pycache__/
+.vscode/

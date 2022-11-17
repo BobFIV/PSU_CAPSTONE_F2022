@@ -6,6 +6,13 @@ import threading
 # Our tester
 thingy = tester.Thingy()
 
+def readLoop():
+	while True:
+		print(thingy.ser.readline().decode('UTF-8'), end='')
+
+t0 = threading.Thread(target=readLoop)
+t0.start()
+
 # Tkinter requires a root node that all
 # child elements will attach to. This is our 'window'
 root = Tk()
@@ -67,32 +74,32 @@ ttk.Button(mainframe,
 # Create a button that says allows us to run command "reset"
 ttk.Button(mainframe,
 	text="reset",
-	command=lambda: run_command("reset")).grid(column=4, row=1, sticky=W)
+	command=lambda: run_command("!reset;")).grid(column=4, row=1, sticky=W)
 
 # Create a button that says allows us to run command "register"
 ttk.Button(mainframe,
 	text="register",
-	command=lambda: run_command("register")).grid(column=4, row=2, sticky=W)
+	command=lambda: run_command("!register;")).grid(column=4, row=2, sticky=W)
 
 # Create a button that says allows us to run command "createDataModel"
 ttk.Button(mainframe,
 	text="createDataModel",
-	command=lambda: run_command("createDataModel")).grid(column=4, row=3, sticky=W)
+	command=lambda: run_command("!createDataModel;")).grid(column=4, row=3, sticky=W)
 
 # Create a button that says allows us to run command "retrieveNotifications"
 ttk.Button(mainframe,
 	text="retrieveNotifications",
-	command=lambda: run_command("retrieveNotifications")).grid(column=5, row=1, sticky=W)
+	command=lambda: run_command("!retrieveNotifications;")).grid(column=5, row=1, sticky=W)
 
 # Create a button that says allows us to run command "updateDataModel"
 ttk.Button(mainframe,
 	text="updateDataModel",
-	command=lambda: run_command("updateDataModel")).grid(column=5, row=2, sticky=W)
+	command=lambda: run_command("!updateDataModel;")).grid(column=5, row=2, sticky=W)
 
 # Create a button that says allows us to run command "deregister"
 ttk.Button(mainframe,
 	text="deregister",
-	command=lambda: run_command("deregister")).grid(column=5, row=3, sticky=W)
+	command=lambda: run_command("!deregister;")).grid(column=5, row=3, sticky=W)
 
 # Widget to modify the sleep time between each command
 sleep_time = StringVar()
