@@ -6,13 +6,13 @@
     Do not place any functions in here, only #define statements.
     This file should be changed before programming a new Thingy:91 with the Traffic Light AE so that each AE has a different identifier.
 */
-
+//  http://3.88.130.137/
 // Location and port of the oneM2M CSE
 #define ENDPOINT_HOSTNAME "34.238.135.110"
 #define ENDPOINT_PORT 8080
 
 // Originator name
-#define DEVICE_LETTER  "D"
+#define DEVICE_LETTER  "B"
 #define M2M_ORIGINATOR "Cthingy91" DEVICE_LETTER
 #define BLE_TARGET "Intersection" DEVICE_LETTER
 

@@ -243,15 +243,18 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			if (registered && data_model_created){
 				deleteSUB();
 				deleteFLEX();
-				deletePCH();
-				registered = false;
 				data_model_created = false;
+				deletePCH();
+				deleteAE();
+				deleteACP();
+				registered = false;
 
 				if (event->reset){
 					register_ae();
-					create_data_model();
 					registered = true;
+					create_data_model();
 					data_model_created = true;
+					retrieveFlexContainer();
 				}
 			}
 			else{

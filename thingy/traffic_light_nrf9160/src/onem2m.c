@@ -145,6 +145,7 @@ bool discoverACP() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 5000\r\n",
         NULL};
     
     //create URL 
