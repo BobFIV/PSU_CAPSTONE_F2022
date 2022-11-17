@@ -12,7 +12,6 @@ bool deleteACP();
 char* createAE();
 bool discoverAE();
 bool deleteAE();
-int deleteAE(const char* resourceName);
 
 // Flex Container
 char* createFlexContainer();

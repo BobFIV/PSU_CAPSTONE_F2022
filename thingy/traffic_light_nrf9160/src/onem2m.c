@@ -45,6 +45,8 @@ void init_oneM2M() {
     memset(acpi, 0, ACPI_LENGTH);
     memset(aeurl, 0, aei_LENGTH);
     memset(flexident, 0, flexident_LENGTH);
+    memset(pchurl, 0, PCH_LENGTH);
+    memset(suburl, 0, SUB_LENGTH);
 }
 
 void clear_onem2m_request_payload() {
@@ -207,7 +209,7 @@ bool deleteACP() {
         give_http_sem();
         return false;
     }
-
+    memset(acpi, 0, ACPI_LENGTH);
     give_http_sem();
     LOG_INF("ACP Deleted");
     return true;
@@ -230,7 +232,9 @@ char* createAE() {
     
     // make post request
     take_http_sem();
+    LOG_INF("sending AE");
     int response_code = post_request(ENDPOINT_HOSTNAME, "/id-in", onem2m_request_payload, strlen(onem2m_request_payload), headers);
+    LOG_INF("Recived AE");
     if (response_code <= 0) {
         LOG_ERR("Failed to create AE!");
         give_http_sem();
@@ -337,7 +341,7 @@ bool deleteAE() {
         give_http_sem();
         return false;
     }
-
+    memset(aeurl, 0, aei_LENGTH);
     give_http_sem();
     LOG_INF("AE Deleted");
     return true;
@@ -548,7 +552,7 @@ bool deleteFLEX() {
         give_http_sem();
         return false;
     }
-
+    memset(flexident, 0, flexident_LENGTH);
     give_http_sem();
     LOG_INF("FLEX Deleted");
     return true;
@@ -681,7 +685,7 @@ bool deletePCH() {
         give_http_sem();
         return false;
     }
-
+    memset(pchurl, 0, PCH_LENGTH);
     give_http_sem();
     LOG_INF("PCH Deleted");
     return true;
@@ -836,7 +840,7 @@ bool deleteSUB() {
         give_http_sem();
         return false;
     }
-
+    memset(suburl, 0, SUB_LENGTH);
     give_http_sem();
     LOG_INF("SUB Deleted");
     return true;

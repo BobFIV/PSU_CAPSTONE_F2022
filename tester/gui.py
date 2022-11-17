@@ -71,6 +71,15 @@ ttk.Button(mainframe,
 	text="Run test file",
 	command=run_test_file).grid(column=3, row=2, sticky=W)
 
+#Create a button that allows user to enter testing state
+ttk.Button(mainframe,
+	text="Test State ON",
+	command=lambda: run_command("!testBegin;")).grid(column=3, row=3, sticky=W)
+
+ttk.Button(mainframe,
+	text="Test State OFF",
+	command=lambda: run_command("!testEnd;")).grid(column=3, row=4, sticky=W)
+
 # Create a button that says allows us to run command "reset"
 ttk.Button(mainframe,
 	text="reset",
