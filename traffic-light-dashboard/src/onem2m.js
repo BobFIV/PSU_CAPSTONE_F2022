@@ -450,33 +450,40 @@ export class PollingChannel extends Resource {
                 baseURL: this._connection.url,
                 url: this.resource_id + "/pcu"
             }).then((response) => {
-                response = response.data["m2m:rqp"]
-                this._response_callback(response);
-                let request_id_echo = response.rqi;
+                let render_promise = new Promise((response) => { 
+                	response = response.data["m2m:rqp"]
+			this._response_callback(response);
+		});
 
-                let acknowledge_data = { "m2m:rsp": {
-                    rqi: request_id_echo,
-                    pc: response.pc,
-                    rsc: 2004,
-                    rvi: "3"
-                }};
-                
-                // Acknowledge the update
-                axios({
-                    method: "post",
-                    headers: {
-                        "X-M2M-Origin": this._connection.originator,
-                        "X-M2M-RI": request_id_echo,
-                        "X-M2M-RVI": "3"
-                    },
-                    responseType: "json",
-                    baseURL: this._connection.url,
-                    url: this.resource_id + "/pcu",
-                    data: acknowledge_data
-                }).then(() => {
-                    // Perform the next long poll request
-                    setTimeout(this._poll_loop, 50);
-                });
+		let acknowledge_promise = new Promise((response) => {
+                	response = response.data["m2m:rqp"]
+			let request_id_echo = response.rqi;
+
+			let acknowledge_data = { "m2m:rsp": {
+			    rqi: request_id_echo,
+			    pc: response.pc,
+			    rsc: 2004,
+			    rvi: "3"
+			}};
+			
+			// Acknowledge the update
+			return acknowledge_promise = axios({
+			    method: "post",
+			    headers: {
+				"X-M2M-Origin": this._connection.originator,
+				"X-M2M-RI": request_id_echo,
+				"X-M2M-RVI": "3"
+			    },
+			    responseType: "json",
+			    baseURL: this._connection.url,
+			    url: this.resource_id + "/pcu",
+			    data: acknowledge_data
+			}).then(() => {
+			    // Perform the next long poll request
+			    setTimeout(this._poll_loop, 50);
+			});
+		});
+		return Promise.all([acknowledge_promise, render_promise]);
             }).catch((error) => {
                 if (error.response && error.response.status === 504) {
                     // long poll timed out, this means there wasn't any updates
