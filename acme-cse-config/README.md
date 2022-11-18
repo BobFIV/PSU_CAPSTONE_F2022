@@ -15,7 +15,7 @@ After starting the ACME CSE, follow the below instructions for enabling access f
 
 ## ACP Modification
 In order to allow the Dashboard Web App to create notifications for the creation of intersection AE's, the root ACP of the CSE has to be modified.  
-Using ACME's REST Web UI, add the following Access Controll Record to the `createACPs` policy (add it as an element in the `pv.acr` array):
+Using ACME's REST Web UI, add the following Access Control Record to the `createACPs` policy (add it as an element in the `pv.acr` array):
 ```
 {
     "acor": [
