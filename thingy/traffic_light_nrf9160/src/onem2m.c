@@ -99,6 +99,7 @@ void createACP() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
     
     // make post request
@@ -199,6 +200,7 @@ bool deleteACP() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     take_http_sem();
@@ -225,6 +227,7 @@ char* createAE() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     //Create the payload to send to the ACME server
@@ -279,6 +282,7 @@ bool discoverAE() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     take_http_sem();
@@ -331,6 +335,7 @@ bool deleteAE() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     take_http_sem();
@@ -358,6 +363,7 @@ char* createFlexContainer() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     //Create the payload to send to the ACME server
@@ -412,6 +418,7 @@ bool discoverFlexContainer() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
     
     //create URL 
@@ -464,6 +471,7 @@ void retrieveFlexContainer() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
     
     //create a url that targest the flex container
@@ -542,6 +550,7 @@ bool deleteFLEX() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     take_http_sem();
@@ -570,6 +579,7 @@ void createPCH() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     //create payload
@@ -622,6 +632,7 @@ bool discoverPCH() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
     
     //create URL 
@@ -675,6 +686,7 @@ bool deletePCH() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     take_http_sem();
@@ -703,6 +715,7 @@ void createSUB() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     //create payload
@@ -776,6 +789,7 @@ bool discoverSUB() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
     
     //create URL 
@@ -830,6 +844,7 @@ bool deleteSUB() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
 
     take_http_sem();
@@ -854,6 +869,7 @@ void onem2m_performPoll() {
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: a34sds2efw4rg6r\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RET: 8000\r\n",
         NULL};
     
     //create URL 
