@@ -214,6 +214,30 @@ int get_request(char* host, char* url, const char** headers) {
 		return perform_http_request(&req);
 }
 
+int delete_request(char* host, char* url, const char** headers) {
+		// !!! WARNING !!!
+		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 
+		//		and then call k_sem_give(&http_request_sem) when you are done with the http_rx_buf !!!!! 
+		//
+
+		// Clear out the response buffer
+		memset(&http_rx_buf[0], 0, HTTP_RX_BUF_SIZE);
+		// Create a new request
+		struct http_request req;
+		memset(&req, 0, sizeof(req));
+		// Fill out the request parameters
+		req.method = HTTP_DELETE;
+		req.url = url;
+		req.host = host;
+		req.protocol = "HTTP/1.1";
+		req.response = response_cb;
+		req.recv_buf = &http_rx_buf[0];
+		req.recv_buf_len = HTTP_RX_BUF_SIZE;
+		req.header_fields = headers;
+
+		return perform_http_request(&req);
+}
+
 int post_request(char* host, char* url, char* payload, size_t payload_size, const char** headers) {
 		// !!! WARNING !!!
 		//    Make sure to call k_sem_take(&http_request_sem, K_FOREVER) before calling this function, 

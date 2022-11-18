@@ -27,6 +27,9 @@ char flexident[flexident_LENGTH];
 #define PCH_LENGTH 50
 char pchurl[PCH_LENGTH];
 
+#define SUB_LENGTH 50
+char suburl[PCH_LENGTH];
+
 #define RQI_LENGTH 50
 char rqi_value[RQI_LENGTH];
 const char* rqi_header = rqi_value;
@@ -89,7 +92,6 @@ void createACP() {
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=1\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -136,7 +138,6 @@ bool discoverACP() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -185,11 +186,37 @@ bool discoverACP() {
     return true;
 }
 
+bool deleteACP() {
+    LOG_INF("Delete ACP");
+
+    //create headers for delete request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    take_http_sem();
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", acpi);
+    int response_code = delete_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
+        LOG_ERR("Failed to delete ACP");
+        give_http_sem();
+        return false;
+    }
+
+    give_http_sem();
+    LOG_INF("ACP Deleted");
+    return true;
+}
+
 char* createAE() {
     LOG_INF("Creating AE");
     //create headers needed for the creation of AE
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=2\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -242,7 +269,6 @@ bool discoverAE() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -290,8 +316,31 @@ bool discoverAE() {
     return true;
 }
 
-int deleteAE(const char* resourceName) {
-    return 0;
+bool deleteAE() {
+    LOG_INF("Delete AE");
+
+    //create headers for delete request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    take_http_sem();
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", aeurl);
+    int response_code = delete_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
+        LOG_ERR("Failed to delete AE");
+        give_http_sem();
+        return false;
+    }
+
+    give_http_sem();
+    LOG_INF("AE Deleted");
+    return true;
 }
 
 char* createFlexContainer() {
@@ -299,7 +348,6 @@ char* createFlexContainer() {
     
     //create headers needed for the creation of AE
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=28\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -354,7 +402,6 @@ bool discoverFlexContainer() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -407,7 +454,6 @@ void retrieveFlexContainer() {
 
     //need to create headers for the get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -448,12 +494,12 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
 
     //need to create headers for the get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
         "X-M2M-RI: o4d3qpiix6p\r\n",
         "X-M2M-RVI: 3\r\n",
+        "X-M2M-RTU: 1\r\n", // RUI = 1 means nonBlockingSync
         NULL};
 
     //create payload
@@ -469,10 +515,9 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
     // make post request
     take_http_sem();
     clear_onem2m_url_buffer();
-    sprintf(onem2m_url_buffer,"/%s", flexident);
+    sprintf(onem2m_url_buffer,"/%s?rt=1", flexident);
     int response_code = put_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, onem2m_request_payload, strlen(onem2m_request_payload), headers);
-    if (response_code
-     <= 0) {
+    if (response_code <= 0) {
         LOG_ERR("Failed to update Flex Container!");
         give_http_sem();
         return false;
@@ -482,13 +527,39 @@ bool updateFlexContainer(const char* l1s, const char* l2s, const char* bts) {
     return true;
 }
 
+bool deleteFLEX() {
+    LOG_INF("Delete FLEX");
+
+    //create headers for delete request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    take_http_sem();
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", flexident);
+    int response_code = delete_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
+        LOG_ERR("Failed to delete FLEX");
+        give_http_sem();
+        return false;
+    }
+
+    give_http_sem();
+    LOG_INF("FLEX Deleted");
+    return true;
+}
+
 void createPCH() {
     /// @brief Attempts to create an PCH on the CSE
     LOG_INF("Creating PCH");
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=15\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -541,7 +612,6 @@ bool discoverPCH() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -590,13 +660,39 @@ bool discoverPCH() {
     return true;
 }
 
+bool deletePCH() {
+    LOG_INF("Delete PCH");
+
+    //create headers for delete request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    take_http_sem();
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", pchurl);
+    int response_code = delete_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
+        LOG_ERR("Failed to delete PCH");
+        give_http_sem();
+        return false;
+    }
+
+    give_http_sem();
+    LOG_INF("PCH Deleted");
+    return true;
+}
+
 void createSUB() {
     /// @brief Attempts to create an SUB on the CSE
     LOG_INF("Creating SUB");
     
     //create headers needed for the creation of ACP
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json;ty=23\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -635,6 +731,31 @@ void createSUB() {
         return;
     }
 
+    //get sub url form creation  response
+    cJSON* j = parse_json_response();
+    if (j != NULL) {
+        const cJSON* acp = cJSON_GetObjectItemCaseSensitive(j, "m2m:sub");
+        if (cJSON_IsObject(acp))
+        {
+            const cJSON* ri = cJSON_GetObjectItemCaseSensitive(acp, "ri");
+            if (cJSON_IsString(ri) && (ri->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(suburl, ri->valuestring, SUB_LENGTH);
+                LOG_INF("Created SUB, suburl=%s", suburl);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_ERR("Failed to find \"m2m:sub\" JSON field!");
+        }
+        
+    }
+
+
+    free_json_response(j);
     give_http_sem();
     LOG_INF("Created SUB");
     return;
@@ -645,7 +766,6 @@ bool discoverSUB() {
 
     //create headers for get request
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -664,25 +784,66 @@ bool discoverSUB() {
         return false;
     }
 
-    cJSON* j = parse_json_response();
+     cJSON* j = parse_json_response();
     if (j != NULL) {
-        //the AE was found. take the information we need from it
+        //the SUB was found. take the information we need from it
         const cJSON* ae = cJSON_GetObjectItemCaseSensitive(j, "m2m:uril");
         if (cJSON_GetArraySize(ae) != 0)
         {
+            const cJSON* aei = cJSON_GetArrayItem(ae, 0);
+            if (cJSON_IsString(aei) && (aei->valuestring != NULL))
+            {
+                // Copy the acpi from the JSON into the location pointed to
+                strncpy(suburl, &aei->valuestring[7], SUB_LENGTH);
+                LOG_INF("Found SUB identity, suburl=%s", suburl);
+            }
+            else {
+                LOG_ERR("Failed to find \"ri\" JSON field!");
+            }
+        }
+        else {
+            LOG_INF("There is no matching SUB found");
             free_json_response(j);
             give_http_sem();
-            return true;
+            return false;
         }
+        
     }
+
     free_json_response(j);
     give_http_sem();
-    return false;
+    return true;
+}
+
+bool deleteSUB() {
+    LOG_INF("Delete SUB");
+
+    //create headers for delete request
+    const char* headers[] = {
+        "Content-Type: application/json\r\n",
+        "Accept: application/json\r\n",
+        "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
+        "X-M2M-RI: o4d3qpiix6p\r\n",
+        "X-M2M-RVI: 3\r\n",
+        NULL};
+
+    take_http_sem();
+    clear_onem2m_url_buffer();
+    sprintf(onem2m_url_buffer,"/%s", suburl);
+    int response_code = delete_request(ENDPOINT_HOSTNAME, onem2m_url_buffer, headers);
+    if (response_code <= 0) {
+        LOG_ERR("Failed to delete SUB");
+        give_http_sem();
+        return false;
+    }
+
+    give_http_sem();
+    LOG_INF("SUB Deleted");
+    return true;
 }
 
 void onem2m_performPoll() {
     const char* headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -776,7 +937,6 @@ void onem2m_performPoll() {
     memset(m2m_ri_echo, 0, 63);
     sprintf(m2m_ri_echo, "X-M2M-RI: %s\r\n", rqi_value);
     const char* echo_headers[] = {
-        "Connection: keep-alive\r\n",
         "Content-Type: application/json\r\n",
         "Accept: application/json\r\n",
         "X-M2M-Origin: " M2M_ORIGINATOR "\r\n", 
@@ -810,3 +970,4 @@ void onem2m_performPoll() {
     give_http_sem();
     return;
 }
+
