@@ -37,6 +37,9 @@ enum ae_light_states light1_state = AE_LIGHT_RED;
 enum ae_light_states light2_state = AE_LIGHT_RED;
 bool poll_thread_started = false;
 struct k_sem polling_sem;
+bool test_mode_started = false;
+bool registered = false; 
+bool data_model_created = false;
 
 void register_ae();
 void create_data_model();
@@ -68,7 +71,7 @@ void push_flex_container() {
 		strcpy(ble_string, "connected");
 	}
 	else {
-		strcpy(ble_string, "connected");
+		strcpy(ble_string, "disconnected");
 	}
 
 	updateFlexContainer(l1_state_string, l2_state_string, ble_string);
@@ -175,24 +178,33 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			light2_state = event->new_light2_state;
 			update_light_states();
 		}
-<<<<<<< HEAD
+// <<<<<<< HEAD
 		//TODO:
 		//Temporarily commented out while testing AT parsing
-		// else if (event->cmd == AE_EVENT_POLL) {
-		// 	if (!poll_thread_started) {
-		// 		poll_thread_started = true;
-		// 		k_thread_create(&polling_thread, poll_thread_stack,
-        //                          K_THREAD_STACK_SIZEOF(poll_thread_stack),
-        //                          do_poll,
-        //                          NULL, NULL, NULL,
-        //                          POLLING_CHANNEL_PRIORITY, 0, K_NO_WAIT);
-		// 	}
-		// 	else {
-		// 		give_poll_sem();
-		// 	}
-		// }
+		else if (event->cmd == AE_EVENT_POLL) {
+			if (!poll_thread_started) {
+				poll_thread_started = true;
+				LOG_INF("STARTING POLLING THREAD");
+				k_thread_create(&polling_thread, poll_thread_stack,
+								K_THREAD_STACK_SIZEOF(poll_thread_stack),
+								do_poll,
+								NULL, NULL, NULL,
+								POLLING_CHANNEL_PRIORITY, 0, K_NO_WAIT);
+			}
+			else {
+				if(!test_mode_started){
+					LOG_INF("RESTART POLLING THREAD");
+					give_poll_sem();
+
+				}
+				else{
+					LOG_INF("POLLING THREAD STOPPED");
+				}
+			}
+		}
 		else if (event->cmd == AE_EVENT_REGISTER) {
 			register_ae();
+			registered = true;
 			if (event->do_init_sequence) {
 				// Trigger the AE_EVENT_CREATE_DATA_MODEL EVENT
 				struct ae_event* a = new_ae_event();
@@ -200,9 +212,10 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				a->do_init_sequence = true;
 				APP_EVENT_SUBMIT(a);
 			}
-		}
+	}
 		else if (event->cmd == AE_EVENT_CREATE_DATA_MODEL) {
 			create_data_model();
+			data_model_created = true;
 			if (event->do_init_sequence) {
 				push_flex_container();
 				// Trigger the AE_EVENT_POLL EVENT
@@ -211,6 +224,65 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				APP_EVENT_SUBMIT(a);
 			}
 		}
+
+		//test to AT commands
+		else if(event->cmd == AE_EVENT_TEST_MODE){
+			if(!test_mode_started){
+				//change variable so the semphore cannot be taken by the loop
+				test_mode_started = true;
+			}
+			else{
+				test_mode_started = false;
+				//retrigger polling event to give up semaphore
+				struct ae_event* a = new_ae_event();
+				a->cmd = AE_EVENT_POLL;
+				APP_EVENT_SUBMIT(a);
+			}
+		}
+		else if(event->cmd == AE_EVENT_DEREGISTER){
+			if (registered && data_model_created){
+				deleteSUB();
+				deleteFLEX();
+				data_model_created = false;
+				deletePCH();
+				deleteAE();
+				deleteACP();
+				registered = false;
+
+				if (event->reset){
+					register_ae();
+					registered = true;
+					create_data_model();
+					data_model_created = true;
+					retrieveFlexContainer();
+				}
+			}
+			else{
+				LOG_INF("TRIED DEREGISTERING WHEN NOT REGISTERED OR DATA MODEL NOT CREATED");
+			}
+		}
+		else if(event->cmd == AE_EVENT_TEST_REGISTER){
+			if (!registered){
+				register_ae();
+				registered = true;
+			}
+			else{
+				LOG_INF("TRIED TO REGISTER WHEN ITS ALREADY CREATED");
+			}
+		}
+		else if(event->cmd == AE_EVENT_TEST_CREATE_DATA){
+			if (registered && !data_model_created){
+				create_data_model();
+				data_model_created = true;
+			}
+			else if(!registered && !data_model_created){
+				LOG_INF("TRIED TO CREATE DATA MODEL WITHOUT REGISTERING");
+			}
+			else{
+				LOG_INF("TRIED TO CREATE DATA MODEL WHEN ITS ALREADY CREATED");
+			}
+		}
+		
 		return false;
 	}
 
@@ -226,6 +298,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			
 			if (ble_connected) {
 				set_green_led();
+			}
+			else{
+				set_blue_led();
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
@@ -245,6 +320,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 	if (is_ble_event(aeh)) {
 		const struct ble_event *event = cast_ble_event(aeh);
 		if (event->cmd == BLE_CONNECTED) {
+			LOG_INF("Got BLUETOOTH CONNECTED");
 			ble_connected = true;
 			if (lte_connected) {
 				set_green_led();
@@ -255,6 +331,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				light1_state = AE_LIGHT_RED;
 				light2_state = AE_LIGHT_RED;
 				update_light_states();
+				LOG_INF("Got BLUETOOTH CONNECTED BEFORE LTE");
 			}
 			send_command("!stop_scan;");
         }
@@ -283,6 +360,9 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			ble_scanning = false;
 			lte_connected = false;
 			poll_thread_started = false;
+			test_mode_started = false;
+			registered = false; 
+			data_model_created = false;
 			k_sem_init(&polling_sem, 1, 1);
 			send_command("!start_scan" BLE_TARGET ";");
 			set_red_led();

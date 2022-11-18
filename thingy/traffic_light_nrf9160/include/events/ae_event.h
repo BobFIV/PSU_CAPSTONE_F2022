@@ -32,7 +32,7 @@ enum ae_light_states {
 };
 
 enum ae_event_types {
-	AE_EVENT_LIGHT_CMD, AE_EVENT_REGISTER, AE_EVENT_CREATE_DATA_MODEL, AE_EVENT_POLL
+	AE_EVENT_LIGHT_CMD, AE_EVENT_REGISTER, AE_EVENT_CREATE_DATA_MODEL, AE_EVENT_POLL, AE_EVENT_TEST_MODE, AE_EVENT_DEREGISTER, AE_EVENT_TEST_CREATE_DATA, AE_EVENT_TEST_REGISTER
 };
 
 /** Peer connection event. */
@@ -46,6 +46,7 @@ struct ae_event {
 	enum ae_light_states new_light2_state;
 	// If set to true, then AE_EVENT_REGISTER should then trigger an AE_EVENT_CREATE_DATA_MODEL
 	bool do_init_sequence;
+	bool reset;
 };
 
 enum ae_light_states string_to_light_state(char* str, size_t max_length);

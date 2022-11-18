@@ -81,8 +81,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 	if (is_uart_data_event(aeh)) {
 		const struct uart_data_event *event =
 			cast_uart_data_event(aeh);
-		if (event->dev_idx == 0) {
-            
+		if (event->dev_idx == 1) {
 			//This is coming from the nRF52840
             for (size_t i = 0; i < event->len; i++) {
 				parse_nrf52840_char(event->buf[i]);

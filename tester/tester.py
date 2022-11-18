@@ -6,7 +6,7 @@ class Thingy:
 
     def __init__(self, sleep_time=1.0):
         self.ser = serial.Serial(
-            port='/dev/ttyACM0',
+            port='COM8',
             baudrate=115200
         )
 
