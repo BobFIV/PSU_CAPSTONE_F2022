@@ -71,7 +71,7 @@ void push_flex_container() {
 		strcpy(ble_string, "connected");
 	}
 	else {
-		strcpy(ble_string, "connected");
+		strcpy(ble_string, "disconnected");
 	}
 
 	updateFlexContainer(l1_state_string, l2_state_string, ble_string);
@@ -300,7 +300,6 @@ static bool app_event_handler(const struct app_event_header *aeh)
 				set_green_led();
 			}
 			else{
-				LOG_INF("Got LTE_CONNECTED BEFORE BLUETOOTH");
 				set_blue_led();
 			}
         }
