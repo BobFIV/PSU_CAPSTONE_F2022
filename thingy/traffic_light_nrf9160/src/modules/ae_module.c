@@ -301,6 +301,7 @@ static bool app_event_handler(const struct app_event_header *aeh)
 			}
 			else{
 				LOG_INF("Got LTE_CONNECTED BEFORE BLUETOOTH");
+				set_blue_led();
 			}
         }
 		else if (event->conn_state == LTE_DISCONNECTED) {
