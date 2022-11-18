@@ -450,24 +450,25 @@ export class PollingChannel extends Resource {
                 baseURL: this._connection.url,
                 url: this.resource_id + "/pcu"
             }).then((response) => {
-                let render_promise = new Promise((response) => { 
-                	response = response.data["m2m:rqp"]
-			this._response_callback(response);
+                let render_promise = new Promise((resolve, reject) => { 
+                	let my_response = response.data["m2m:rqp"]
+			resolve(this._response_callback(my_response));
 		});
 
-		let acknowledge_promise = new Promise((response) => {
-                	response = response.data["m2m:rqp"]
-			let request_id_echo = response.rqi;
+		let acknowledge_promise = new Promise((resolve, reject) => {
+			console.log(response);
+                	let other_response = response.data["m2m:rqp"]
+			let request_id_echo = other_response.rqi;
 
 			let acknowledge_data = { "m2m:rsp": {
 			    rqi: request_id_echo,
-			    pc: response.pc,
+			    pc: other_response.pc,
 			    rsc: 2004,
 			    rvi: "3"
 			}};
 			
 			// Acknowledge the update
-			return acknowledge_promise = axios({
+			resolve(axios({
 			    method: "post",
 			    headers: {
 				"X-M2M-Origin": this._connection.originator,
@@ -481,7 +482,7 @@ export class PollingChannel extends Resource {
 			}).then(() => {
 			    // Perform the next long poll request
 			    setTimeout(this._poll_loop, 50);
-			});
+			}));
 		});
 		return Promise.all([acknowledge_promise, render_promise]);
             }).catch((error) => {
